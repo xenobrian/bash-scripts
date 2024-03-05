@@ -9,7 +9,11 @@ taken from online sources with some edits or tweaks, or completely copy-pasted f
 > Some distributions don't include git automatically. Make sure to check the availability of git first.<br>
 
 Go to your Linux terminal, and put this command : `git clone https://github.com/Envrmore/bash-scripts`. This will clone (download) the entire content of this repository.
-To target specific file from this repository, you can use this command: `git clone https://github.com/Envrmore/bash-scripts`.
+To target specific file from this repository you can use `wget` or `curl`.<br>
+<br>
+- Using wget : `wget -O something.sh https://github.com/Envrmore/bash-scripts`
+- Using curl : `curl -o something.sh https://github.com/Envrmore/bash-scripts`
+<br>
 
 #### 2. Using FTP or SFTP ####
 This method is potentially better when there is limited-to-no internet connectivity.<br>
@@ -23,4 +27,4 @@ that have the scripts to transfer the file using FTP client (on Windows : WinSCP
 You need to give execute permission for the script by using the following command: `sudo chmod +x something.sh`.<br>
 After that on your machine you can use the `bash` command for calling the script, or by directly specifying the path to the script.
 Scenario example: You have the script on your machine already, it is located on /home/username. To execute the script you can go to the directory of
-the script first: `cd /home/username` then run `./something.sh`. Or, you can just directly call the script with its path: `/home/username/something.sh`.
+the script first: `cd /home/username` then run `./something.sh`. Or directly call the script with its path: `bash /home/username/something.sh`.
