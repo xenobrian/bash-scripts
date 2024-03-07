@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Changes static network config to DHCP
-echo "Launching scripts!"
+echo "THIS SCRIPT IS NOT FINISHED YET!"
 sleep 1
 echo -e "Are you sure about this?\n Ctrl+C in 5 seconds to cancel!"
 sleep 5
