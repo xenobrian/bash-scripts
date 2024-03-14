@@ -11,7 +11,7 @@ taken from online sources with some edits or tweaks, or completely copy-pasted f
 Go to your Linux terminal, and put this command : `git clone https://github.com/Envrmore/bash-scripts`. This will clone (download) the entire content of this repository.
 To target specific file from this repository you can use `wget` or `curl`.<br>
 <br>
-- Using wget : `wget https://github.com/Envrmore/bash-scripts/blob/main/something.sh`
+- Using wget : `wget https://raw.githubusercontent.com/Envrmore/bash-scripts/main/something.sh`
 - Using curl : `curl -o something.sh https://github.com/Envrmore/bash-scripts`
 <br>
 
