@@ -1,4 +1,5 @@
 #!/bin/bash
+
 read -p "Ketik yes kalau jaringan mau direstart. Restart jaringan? : " restartInput
 
 ## Ini untuk mengubah input user ke lowercase agar inputnya case-insensitive
