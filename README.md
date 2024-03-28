@@ -6,7 +6,7 @@ taken from online sources with some edits or tweaks, or completely copy-pasted f
 ***
 #### 1. Using git-clone ####
 > [!WARNING]
-> Some distributions don't include git automatically. Make sure to check the availability of git first.<br>
+> Most distributions do not come with Git preinstalled, check the availability of Git first.<br>
 
 Go to your Linux terminal, and put this command : `git clone https://github.com/Envrmore/bash-scripts`. This will clone (download) the entire content of this repository.
 To target specific file from this repository you can use `wget` or `curl`. But it is not possible to use the path of this your target script, as if you were to do that
