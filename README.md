@@ -9,15 +9,16 @@ taken from online sources with some edits or tweaks, or completely copy-pasted f
 > Some distributions don't include git automatically. Make sure to check the availability of git first.<br>
 
 Go to your Linux terminal, and put this command : `git clone https://github.com/Envrmore/bash-scripts`. This will clone (download) the entire content of this repository.
-To target specific file from this repository you can use `wget` or `curl`.<br>
+To target specific file from this repository you can use `wget` or `curl`. But it is not possible to use the path of this your target script, as if you were to do that
+you would get the HTML source file when you see the code from your browser client. We need to specify the URL of the raw file instead.<br>
 <br>
 - Using wget : `wget https://raw.githubusercontent.com/Envrmore/bash-scripts/main/something.sh`
-- Using curl : `curl -o something.sh https://github.com/Envrmore/bash-scripts`
+- Using curl : `curl https://raw.githubusercontent.com/Envrmore/bash-scripts/main/something.sh > /path/to/output/file.sh`
 <br>
 
 #### 2. Using FTP or SFTP ####
 This method is potentially better when there is limited-to-no internet connectivity.<br>
--On Debian-based distributions, install a FTP server (ProFTPD) : `sudo apt update` then `sudo apt install proftpd -y`. Then, just connect to your Linux from other devices 
+-On Debian-based distributions, install a FTP server (e.g. ProFTPD) : `sudo apt update` then `sudo apt install proftpd -y`. Then, just connect to your Linux from other devices 
 that have the scripts to transfer the file using FTP client (on Windows : WinSCP, FileZilla).
 <br>
 <br>
