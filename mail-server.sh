@@ -42,9 +42,10 @@ while true; do
                 read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
                 HOSTGW=${HOSTGW:-192.168.0.1}
 
-                echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW"; sleep 1
+                read -rp "Configure which DNS nameserver(s) to use [192.168.0.1] : " HOSTDNS
+                HOSTDNS=${HOSTDNS:-192.168.0.1}
 
-
+                echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW\nDNS\t\t: $HOSTDNS"
                 read -rp "Is this correct?[yes/no] : " USERDECISION
                 while true; do
                     case "$USERDECISION" in
@@ -81,7 +82,6 @@ echo "Succesfully changed the network configuration!"
 
 systemctl restart networking
 export pid=$!; wait $pid
-
 
 # Sed install
 sudo apt install sed -y > /dev/null 2>&1
