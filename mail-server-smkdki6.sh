@@ -41,30 +41,22 @@ echo "Packages have been installed, will configure Apache2 in 3 seconds..."; sle
 
 # Apache2 for website configuration
 read -p "What domain name would you like to use?(use FQDN)[www.example.org]" domainname
-sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/smkdki.conf
-sudo sed -i 's/ServerName www.example.com/ServerName $domainname/' /etc/apache2/sites-available/smkdki.conf
-sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/smkdki/|' /etc/apache2/sites-available/smkdki.conf
-sudo a2dissite 000-default.conf
-export pid=$!
-wait $pid
-sudo a2ensite smkdki.conf
-sleep 5
-sudo systemctl restart apache2.service
-sleep 3
-sudo systemctl status apache2
-sleep 3
-echo "Will install and configure Bind9 in 5 seconds..."
+sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/website.conf
+sudo sed -i 's/ServerName www.example.com/ServerName $domainname/' /etc/apache2/sites-available/website.conf
+sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/website/|' /etc/apache2/sites-available/website.conf
+sudo a2ensite smkdki.conf && sudo a2dissite 000-default.conf 
+sudo systemctl restart apache2.service && sudo systemctl status apache2
+echo "Will install and configure Bind9 in 3 seconds..."
 sleep 3
 
 # Bind9 configuration
-echo "Installing Bind9 and related packages..."
 sudo apt install bind9 bind9utils dnsutils -y > /dev/null 2>&1
-export pid $!
-wait $pid
-echo "Packages installed. Configuring Bind9 in 5 seconds..."
-sleep 5
-sudo cp /etc/bind/db.local /etc/bind/db.smkdki
-sudo cp /etc/bind/db.127 /etc/bind/db.192
+export pid $!; wait $pid
+echo "Packages installed. Configuring Bind9 in 3 seconds..."; sleep 3
+
+read -p "Please input the name that should be used for naming the db :" dbname
+read -p "Please input your network IP ([192].168.0.0) :" ip
+sudo cp /etc/bind/db.local /etc/bind/db.$dbname && sudo cp /etc/bind/db.127 /etc/bind/db.$ip
 sudo tail -n 20 /etc/bind/named.conf.default-zones >> /etc/bind/named.conf.local
 sudo sed -i "s/file /"
 
