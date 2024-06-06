@@ -1,32 +1,23 @@
 #!/bin/bash
 
 # Changes static network config to DHCP
-echo "THIS SCRIPT IS NOT FINISHED YET!"
-sleep 1
-echo -e "Are you sure about this?\n Ctrl+C in 5 seconds to cancel!"
-sleep 5
-echo "Starting installation!"
-sleep 1
+echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install mail server related packages (Postfix, Dovecot, Apache2, Roundcube)"; sleep 1
+echo -e "Are you sure about this?\n Ctrl+C in 5 seconds to cancel!"; sleep 5
+echo "Starting installation!"; sleep 1
 echo "Making sure your internet is DHCP first..."
 echo -e "auto lo\niface lo inet loopback\n\n# The Primary network interface\nauto enp0s3\niface enp0s3 inet dhcp" > /etc/network/interfaces
 systemctl restart networking
-export pid=$!
-wait $pid
-echo "Your updated IP Configuration :"
-sleep 1 
-ip a
-sleep 3
+export pid=$!; wait $pid
+echo "Your updated IP Configuration :"; sleep 1; ip a; sleep 3
+apt -y install sudo
 
 # DNS Server
-echo "Making sure your DNS is set to 8.8.8.8 first..."
-sleep 1
+echo "Making sure your DNS is set to 8.8.8.8 first..."; sleep 1
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
 # Repository update
 echo "Updating repositories..."
-sudo apt update > /dev/null 2>&1
-export pid=$!
-wait $pid
+sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated."
 
 # Sed install
@@ -44,18 +35,14 @@ sudo sed -i '/iface enp0s3 inet static/ {
 
 # Necessary packages installation
 echo "Installing necessary packages..."
-sudo apt install apache2 libapache2-mod-php wget unzip curl bind9 bind9utils dnsutils -y > /dev/null 2>&1
-export pid=$!  
-wait $pid
-echo "Packages installed."
-sleep 2
-echo "Will configure Apache2 in 5 seconds..."
-sleep 5
-echo "Configuring Apache2..."
+sudo apt install apache2 libapache2-mod-php wget unzip curl -y > /dev/null 2>&1
+export pid=$!; wait $pid
+echo "Packages have been installed, will configure Apache2 in 3 seconds..."; sleep 3
 
 # Apache2 for website configuration
+read -p "What domain name would you like to use?(use FQDN)[www.example.org]" domainname
 sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/smkdki.conf
-sudo sed -i 's/ServerName www.example.com/ServerName www.smkdki6.net/' /etc/apache2/sites-available/smkdki.conf
+sudo sed -i 's/ServerName www.example.com/ServerName $domainname/' /etc/apache2/sites-available/smkdki.conf
 sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/smkdki/|' /etc/apache2/sites-available/smkdki.conf
 sudo a2dissite 000-default.conf
 export pid=$!
