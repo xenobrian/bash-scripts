@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Changes static network config to DHCP
-echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install mail server related packages (Postfix, Dovecot, Apache2, Roundcube)"; sleep 1
-echo -e "Are you sure about this?\n Ctrl+C in 5 seconds to cancel!"; sleep 5
+echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install mail server related packages (Postfix, Dovecot, Apache2, MariaDB, Roundcube)"; sleep 1
+echo -e "Before installing, please make sure that this host's network is DHCP and is able to reach the internet\n/
+because there are some packages that is necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
 echo "Starting installation!"; sleep 1
 
 # DNS Server
