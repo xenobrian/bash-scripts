@@ -35,14 +35,17 @@ while true; do
             \nIP address\t: $HOSTIP/
             \nNetmask\t: $HOSTNETMASK/
             \nGateway\t: $HOSTGW"; sleep 1
+            
             read -rp "Is this correct?[yes/no] :" USERDECISION
             while true; do
                 case "$USERDECISION" in
                     [yY][eE][sS])
-                    echo "Network will be set as the configuration above";;
+                    echo "Network will be set as the configuration above"
+                    break 3;;
 
                     [nN][oO])
-                    ;;
+                    echo "Restarting configuration..."
+                    break;;
 
                     *) Please choose 'yes' or 'no';;
                 esac
@@ -51,7 +54,8 @@ while true; do
         done;;
 
         [dD][hH][cC][pP])
-        echo "You chose DHCP";;
+        echo "You chose DHCP"
+        break;;
 
         *) echo "Invalid option. Please choose 'static' or dhcp'";;
     esac
