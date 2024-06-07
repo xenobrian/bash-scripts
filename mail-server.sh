@@ -4,12 +4,6 @@
 echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install mail server related packages (Postfix, Dovecot, Apache2, Roundcube)"; sleep 1
 echo -e "Are you sure about this?\n Ctrl+C in 5 seconds to cancel!"; sleep 5
 echo "Starting installation!"; sleep 1
-echo "Making sure your internet is DHCP first..."
-echo -e "auto lo\niface lo inet loopback\n\n# The Primary network interface\nauto enp0s3\niface enp0s3 inet dhcp" > /etc/network/interfaces
-systemctl restart networking
-export pid=$!; wait $pid
-echo "Your updated IP Configuration :"; sleep 1; ip a; sleep 3
-apt -y install sudo
 
 # DNS Server
 echo "Making sure your DNS is set to 8.8.8.8 first..."; sleep 1
@@ -56,13 +50,18 @@ while true; do
 
         [d][h][c][p])
         echo "You chose DHCP"
+        cp /etc/network/interfaces /etc/network/interfaces.bak; echo -e "\n\n\nThis file is the backup for the original file" 
         break;;
 
         *) echo "Invalid option. Please choose 'static' or dhcp'";;
     esac
 done
 
+systemctl restart networking
+export pid=$!; wait $pid
 
+
+# Sed install
 sudo apt install sed -y > /dev/null 2>&1
 sudo sed -i 's|iface enp0s3 inet dhcp/iface enp0s3 inet static\n\taddress 192.168.22.6/24\n\tgateway 192.168.22.254|' /etc/network/interfaces
 sudo systemctl restart networking
