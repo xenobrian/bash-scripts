@@ -22,9 +22,10 @@ echo "Repositories has been updated."
 
 # Sed install and IP Configuration
 while true; do
-    read -rp "Network configuration, static or dhcp? [static/dhcp]:" NWMETHOD
+    echo "Network configuration, please use lowercase on all"; sleep 1
+    read -rp "Network configuration method, static or dhcp? [static/dhcp]:" NWMETHOD
     case "$NWMETHOD" in
-        [sS][tT][aA][tT][iI][cC])
+        [s][t][a][t][i][c])
         while true; do
             read -rp "Which interface should be configured(e.g enp0s3, eth0): " HOSTINT 
             read -rp "Configure your IP address (192.168.0.2 for example) :" HOSTIP
@@ -53,7 +54,7 @@ while true; do
             break
         done;;
 
-        [dD][hH][cC][pP])
+        [d][h][c][p])
         echo "You chose DHCP"
         break;;
 
