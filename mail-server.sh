@@ -25,17 +25,35 @@ while true; do
     read -rp "Network configuration, static or dhcp? [static/dhcp]:" NWMETHOD
     case "$NWMETHOD" in
         [sS][tT][aA][tT][iI][cC])
-        while true; do 
+        while true; do
+            read -rp "Which interface should be configured(e.g enp0s3, eth0): " HOSTINT 
             read -rp "Configure your IP address (192.168.0.2 for example) :" HOSTIP
             read -rp "Configure the netmask : " HOSTNETMASK
             read -rp "Configure your gateway : " HOSTGW
+            echo -e "Your IP configuration as follows :/
+            \nInterface\t: $HOSTINT/
+            \nIP address\t: $HOSTIP/
+            \nNetmask\t: $HOSTNETMASK/
+            \nGateway\t: $HOSTGW"; sleep 1
+            read -rp "Is this correct?[yes/no] :" USERDECISION
+            while true; do
+                case "$USERDECISION" in
+                    [yY][eE][sS])
+                    echo "Network will be set as the configuration above";;
+
+                    [nN][oO])
+                    ;;
+
+                    *) Please choose 'yes' or 'no';;
+                esac
+            done
             break
         done;;
 
         [dD][hH][cC][pP])
         echo "You chose DHCP";;
 
-        *) echo "Invalid option. Please choose 'static' or dhcp'"
+        *) echo "Invalid option. Please choose 'static' or dhcp'";;
     esac
 done
 
