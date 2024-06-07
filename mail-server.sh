@@ -20,7 +20,26 @@ echo "Updating repositories..."
 sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated."
 
-# Sed install
+# Sed install and IP Configuration
+while true; do
+    read -rp "Network configuration, static or dhcp? [static/dhcp]:" NWMETHOD
+    case "$NWMETHOD" in
+        [sS][tT][aA][tT][iI][cC])
+        while true; do 
+            read -rp "Configure your IP address (192.168.0.2 for example) :" HOSTIP
+            read -rp "Configure the netmask : " HOSTNETMASK
+            read -rp "Configure your gateway : " HOSTGW
+            break
+        done;;
+
+        [dD][hH][cC][pP])
+        echo "You chose DHCP";;
+
+        *) echo "Invalid option. Please choose 'static' or dhcp'"
+    esac
+done
+
+
 sudo apt install sed -y > /dev/null 2>&1
 sudo sed -i 's|iface enp0s3 inet dhcp/iface enp0s3 inet static\n\taddress 192.168.22.6/24\n\tgateway 192.168.22.254|' /etc/network/interfaces
 sudo systemctl restart networking
