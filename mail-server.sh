@@ -15,12 +15,12 @@ echo "Updating repositories..."
 sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated."
 
-# Sed install and IP Configuration
-#!/bin/bash
-
+# Network Configuration
 while true; do
     echo "Network configuration, please use lowercase on all."; sleep 1
-    read -rp "Network configuration method, static or dhcp? [static/dhcp]: " NWMETHOD
+    read -rp "Network configuration method, static or dhcp? [dhcp]: " NWMETHOD
+    NWMETHOD=${NWMETHOD:-dhcp}
+    
     case "$NWMETHOD" in
         [s][t][a][t][i][c])
         while true; do
