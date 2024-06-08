@@ -18,53 +18,62 @@ echo "Repositories has been updated."
 # Network Configuration
 while true; do
     echo "Network configuration, please use lowercase on all."; sleep 1
-    read -rp "Network configuration method, static or dhcp? [dhcp]: " NWMETHOD
-    NWMETHOD=${NWMETHOD:-dhcp}
-    
-    case "$NWMETHOD" in
-        [s][t][a][t][i][c])
-        while true; do
-            read -rp "Which interface should be configured(e.g enp0s3, eth0)[enp0s3]: " HOSTINT
-            HOSTINT=${HOSTINT:-enp0s3}
-
-            read -rp "Configure your IP address [192.168.0.2] : " HOSTIP
-            HOSTIP=${HOSTIP:-192.168.0.2}
-
-            read -rp "Configure your netmask [255.255.255.0] : " HOSTNETMASK
-            HOSTNETMASK=${HOSTNETMASK:-255.255.255.0}
-
-            read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
-            HOSTGW=${HOSTGW:-192.168.0.1}
-
-            echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW"; sleep 1
-
-
-            read -rp "Is this correct?[yes/no] : " USERDECISION
-            while true; do
-                case "$USERDECISION" in
-                    [yY][eE][sS])
-                    echo "Network will be set as the configuration above"
-                    break 3;;
-
-                    [nN][oO])
-                    echo "Restarting configuration..."
-                    break;;
-
-                    *) Please choose 'yes' or 'no';;
-                esac
-            done
-            break
-        done;;
-
-        [d][h][c][p])
-        echo "You chose DHCP. Now sending DHCPREQUEST..."; sleep 5
-        ## cp /etc/network/interfaces /etc/network/interfaces.bak; echo -e "\n\n\nThis file is the backup for the original file"
-        ## DHCP request command
-        export pid=$!; wait $pid
-        echo "DHCP request succesfully done"
+    read -rp "Do you use NetworkManager as your main network manager? [yes/no] : " NMEXIST
+    case "$NMEXIST" in
+        [y][e][s])
         break;;
 
-        *) echo "Invalid option. Please choose 'static' or dhcp'";;
+        [n][o])
+        read -rp "Network configuration method, static or dhcp? [dhcp]: " NWMETHOD
+        NWMETHOD=${NWMETHOD:-dhcp}
+    
+        case "$NWMETHOD" in
+            [s][t][a][t][i][c])
+            while true; do
+                read -rp "Which interface should be configured(e.g enp0s3, eth0)[enp0s3]: " HOSTINT
+                HOSTINT=${HOSTINT:-enp0s3}
+
+                read -rp "Configure your IP address [192.168.0.2] : " HOSTIP
+                HOSTIP=${HOSTIP:-192.168.0.2}
+
+                read -rp "Configure your netmask [255.255.255.0] : " HOSTNETMASK
+                HOSTNETMASK=${HOSTNETMASK:-255.255.255.0}
+
+                read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
+                HOSTGW=${HOSTGW:-192.168.0.1}
+
+                echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW"; sleep 1
+
+
+                read -rp "Is this correct?[yes/no] : " USERDECISION
+                while true; do
+                    case "$USERDECISION" in
+                        [yY][eE][sS])
+                        echo "Network will be set as the configuration above"
+                        break 3;;
+
+                        [nN][oO])
+                        echo "Restarting configuration..."
+                        break;;
+
+                        *) Please choose 'yes' or 'no';;
+                    esac
+                done
+                break
+            done;;
+
+            [d][h][c][p])
+            echo "You chose DHCP. Now sending DHCPREQUEST..."; sleep 5
+            ## cp /etc/network/interfaces /etc/network/interfaces.bak; echo -e "\n\n\nThis file is the backup for the original file"
+            ## DHCP request command
+            export pid=$!; wait $pid
+            echo "DHCP request succesfully done"
+            break;;
+
+            *) echo "Invalid option. Please choose 'static' or dhcp'";;
+        esac
+        
+        *) echo "Please answer with 'yes' or 'no'"
     esac
 done
 
