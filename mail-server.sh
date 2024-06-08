@@ -86,7 +86,7 @@ read -p "What domain name would you like to use?(use FQDN)[www.example.org]" dom
 sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/website.conf
 sudo sed -i 's/ServerName www.example.com/ServerName $domainname/' /etc/apache2/sites-available/website.conf
 sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/website/|' /etc/apache2/sites-available/website.conf
-sudo a2ensite smkdki.conf && sudo a2dissite 000-default.conf 
+sudo a2ensite $.conf && sudo a2dissite 000-default.conf 
 sudo systemctl restart apache2.service && sudo systemctl status apache2
 echo "Will install and configure Bind9 in 3 seconds..."
 sleep 3
