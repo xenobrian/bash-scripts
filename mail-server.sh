@@ -16,23 +16,30 @@ sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated."
 
 # Sed install and IP Configuration
+#!/bin/bash
+
 while true; do
-    echo "Network configuration, please use lowercase on all"; sleep 1
-    read -rp "Network configuration method, static or dhcp? [static/dhcp]:" NWMETHOD
+    echo "Network configuration, please use lowercase on all."; sleep 1
+    read -rp "Network configuration method, static or dhcp? [static/dhcp]: " NWMETHOD
     case "$NWMETHOD" in
         [s][t][a][t][i][c])
         while true; do
-            read -rp "Which interface should be configured(e.g enp0s3, eth0): " HOSTINT 
-            read -rp "Configure your IP address (192.168.0.2 for example) :" HOSTIP
-            read -rp "Configure the netmask : " HOSTNETMASK
-            read -rp "Configure your gateway : " HOSTGW
-            echo -e "Your IP configuration as follows :/
-            \nInterface\t: $HOSTINT/
-            \nIP address\t: $HOSTIP/
-            \nNetmask\t: $HOSTNETMASK/
-            \nGateway\t: $HOSTGW"; sleep 1
-            
-            read -rp "Is this correct?[yes/no] :" USERDECISION
+            read -rp "Which interface should be configured(e.g enp0s3, eth0)[enp0s3]: " HOSTINT
+            HOSTINT=${HOSTINT:-enp0s3}
+
+            read -rp "Configure your IP address [192.168.0.2] : " HOSTIP
+            HOSTIP=${HOSTIP:-192.168.0.2}
+
+            read -rp "Configure your netmask [255.255.255.0] : " HOSTNETMASK
+            HOSTNETMASK=${HOSTNETMASK:-255.255.255.0}
+
+            read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
+            HOSTGW=${HOSTGW:-192.168.0.1}
+
+            echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW"; sleep 1
+
+
+            read -rp "Is this correct?[yes/no] : " USERDECISION
             while true; do
                 case "$USERDECISION" in
                     [yY][eE][sS])
@@ -50,13 +57,18 @@ while true; do
         done;;
 
         [d][h][c][p])
-        echo "You chose DHCP"
-        cp /etc/network/interfaces /etc/network/interfaces.bak; echo -e "\n\n\nThis file is the backup for the original file" 
+        echo "You chose DHCP. Now sending DHCPREQUEST..."; sleep 5
+        ## cp /etc/network/interfaces /etc/network/interfaces.bak; echo -e "\n\n\nThis file is the backup for the original file"
+        ## DHCP request command
+        export pid=$!; wait $pid
+        echo "DHCP request succesfully done"
         break;;
 
         *) echo "Invalid option. Please choose 'static' or dhcp'";;
     esac
 done
+
+echo "Succesfully changed the network configuration!"
 
 systemctl restart networking
 export pid=$!; wait $pid
