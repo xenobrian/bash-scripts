@@ -26,7 +26,7 @@ while true; do
         [n][o])
         read -rp "Network configuration method, static or dhcp? [dhcp]: " NWMETHOD
         NWMETHOD=${NWMETHOD:-dhcp}
-    
+
         case "$NWMETHOD" in
             [s][t][a][t][i][c])
             while true; do
@@ -45,24 +45,29 @@ while true; do
                 read -rp "Configure which DNS nameserver(s) to use [192.168.0.1] : " HOSTDNS
                 HOSTDNS=${HOSTDNS:-192.168.0.1}
 
-                echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW\nDNS\t\t: $HOSTDNS"
-                read -rp "Is this correct?[yes/no] : " USERDECISION
                 while true; do
+                    echo "### Review your configuration"
+                    while true; do
+                        echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW\nDNS server\t: $HOSTDNS"
+                    read -rp "Is this correct?[yes/no] : " USERDECISION
+
                     case "$USERDECISION" in
                         [yY][eE][sS])
                         echo "Network will be set as the configuration above"
-                        sed -i "s|allow-hotplug $HOSTINT/auto $HOSTINT|" /etc/network/interfaces 
-                        sed -i "s|iface $HOSTINT inet dhcp/iface $HOSTINT inet static\n\taddress $HOSTIP/24\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|" /etc/network/interfaces
-                        break 3;;
+                        sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" ./test.txt
+                        sed -i "s|iface $HOSTINT inet dhcp|iface $HOSTINT inet static\n\taddress $HOSTIP\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|" ./test.txt
+                        break 4;;
 
                         [nN][oO])
                         echo "Restarting configuration..."
-                        break;;
+                        break 2;;
 
-                        *) 
-                        echo "Please choose 'yes' or 'no'"
+                        *)
+                        echo "Please choose 'yes' or 'no' woilah"
                         break;;
                     esac
+                    done
+
                 done
                 break
             done;;
@@ -74,11 +79,7 @@ while true; do
             export pid=$!; wait $pid
             echo "DHCP request succesfully done"
             break;;
-
-            *) echo "Invalid option. Please choose 'static' or dhcp'";;
         esac
-        
-        *) echo "Please answer with 'yes' or 'no'"
     esac
 done
 
