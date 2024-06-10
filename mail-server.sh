@@ -51,6 +51,8 @@ while true; do
                     case "$USERDECISION" in
                         [yY][eE][sS])
                         echo "Network will be set as the configuration above"
+                        sed -i 's|allow-hotplug $HOSTINT/auto $HOSTINT|' /etc/network/interfaces 
+                        sed -i 's|iface $HOSTINT inet dhcp/iface $HOSTINT inet static\n\taddress $HOSTIP/24\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|' /etc/network/interfaces
                         break 3;;
 
                         [nN][oO])
@@ -85,7 +87,6 @@ export pid=$!; wait $pid
 
 # Sed install
 sudo apt install sed -y > /dev/null 2>&1
-sudo sed -i 's|iface enp0s3 inet dhcp/iface enp0s3 inet static\n\taddress 192.168.22.6/24\n\tgateway 192.168.22.254|' /etc/network/interfaces
 sudo systemctl restart networking
 
 # Static to dhcp[[:space:]]\+[0-9.] is looking for a sequence of one or more whitespace characters followed by digits and/or dots.
