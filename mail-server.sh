@@ -51,15 +51,17 @@ while true; do
                     case "$USERDECISION" in
                         [yY][eE][sS])
                         echo "Network will be set as the configuration above"
-                        sed -i 's|allow-hotplug $HOSTINT/auto $HOSTINT|' /etc/network/interfaces 
-                        sed -i 's|iface $HOSTINT inet dhcp/iface $HOSTINT inet static\n\taddress $HOSTIP/24\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|' /etc/network/interfaces
+                        sed -i "s|allow-hotplug $HOSTINT/auto $HOSTINT|" /etc/network/interfaces 
+                        sed -i "s|iface $HOSTINT inet dhcp/iface $HOSTINT inet static\n\taddress $HOSTIP/24\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|" /etc/network/interfaces
                         break 3;;
 
                         [nN][oO])
                         echo "Restarting configuration..."
                         break;;
 
-                        *) Please choose 'yes' or 'no';;
+                        *) 
+                        echo "Please choose 'yes' or 'no'"
+                        break;;
                     esac
                 done
                 break
