@@ -7,8 +7,8 @@ because there are some packages that is necessary to be installed beforehand. Ct
 echo "Starting installation!"; sleep 1
 
 # DNS Server
-echo "Making sure your DNS is set to 8.8.8.8 first..."; sleep 1
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
+## echo "Making sure your DNS is set to 8.8.8.8 first..."; sleep 1
+## echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
 # Repository update
 echo "Updating repositories..."
