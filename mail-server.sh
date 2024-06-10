@@ -63,7 +63,7 @@ while true; do
                         break 2;;
 
                         *)
-                        echo "Please choose 'yes' or 'no' woilah"
+                        echo "Please choose 'yes' or 'no'"
                         break;;
                     esac
                     done
