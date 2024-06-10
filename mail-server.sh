@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Changes static network config to DHCP
-echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install mail server related packages (Postfix, Dovecot, Apache2, MariaDB, Roundcube)"; sleep 1
+echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install Postfix, Dovecot, Apache2, MariaDB, Roundcube"; sleep 1
 echo -e "Before installing, please make sure that this host's network is DHCP and is able to reach the internet\n/
 because there are some packages that is necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
 echo "Starting installation!"; sleep 1
@@ -13,8 +13,16 @@ echo "Starting installation!"; sleep 1
 # Repository update
 echo "Updating repositories..."
 sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
-echo "Repositories has been updated."
+echo "Repositories has been updated. Now checking sed..."
 
+sedCheck() {
+    if ! hash sed 2> /dev/null; then
+        echo "The command 'sed' is not installed, will install now."
+        apt install sed -y
+    else
+        exit 1
+    fi    
+}
 # Network Configuration
 while true; do
     echo "Network configuration, please use lowercase on all."; sleep 1
