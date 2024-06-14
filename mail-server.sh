@@ -23,6 +23,7 @@ sedCheck() {
         exit 1
     fi    
 }
+
 # Network Configuration
 while true; do
     echo "Network configuration, please use lowercase on all."; sleep 1
@@ -61,6 +62,7 @@ while true; do
 
                     case "$USERDECISION" in
                         [yY][eE][sS])
+                        sedCheck()
                         echo "Network will be set as the configuration above"
                         sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" ./test.txt
                         sed -i "s|iface $HOSTINT inet dhcp|iface $HOSTINT inet static\n\taddress $HOSTIP\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|" ./test.txt
