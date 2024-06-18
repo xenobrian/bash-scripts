@@ -2,8 +2,9 @@
 
 echo -e "This script will only install services necessary for Nextcloud 28.0.3 excluding PHP 8!\nCtrl+C in 10 seconds to cancel!"
 sleep 10
-echo -e "auto lo\niface lo inet loopback\n\nauto enp0s3\niface enp0s3 inet dhcp" > /etc/network/interfaces
-systemctl restart networking
+
+## echo -e "auto lo\niface lo inet loopback\n\nauto enp0s3\niface enp0s3 inet dhcp" > /etc/network/interfaces
+## systemctl restart networking
 
 apt update
 sleep 2
