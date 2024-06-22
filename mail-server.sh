@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Checks whether the user is root or not
+if (( "$EUID" != 0 )); then
+    echo "You are not root. Please run as root, now exiting."
+    exit
+fi
+
 # Changes static network config to DHCP
 echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install Postfix, Dovecot, Apache2, MariaDB, Roundcube"; sleep 1
 echo -e "Before installing, please make sure that this host's network is DHCP and is able to reach the internet\n/
