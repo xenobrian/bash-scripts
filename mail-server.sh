@@ -48,17 +48,48 @@ while true; do
                 read -rp "Which interface should be configured(e.g enp0s3, eth0)[enp0s3]: " HOSTINT
                 HOSTINT=${HOSTINT:-enp0s3}
 
-                read -rp "Configure your IP address [192.168.0.2] : " HOSTIP
-                HOSTIP=${HOSTIP:-192.168.0.2}
+                while true; do
+                    read -rp "Configure your IP address [192.168.0.2] : " HOSTIP
+                    HOSTIP=${HOSTIP:-192.168.0.2}
+                    if [[ $HOSTIP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                        break
+                    else
+                        echo "Invalid host IP address format. Please try again."
+                    fi
+                done
 
-                read -rp "Configure your netmask [255.255.255.0] : " HOSTNETMASK
-                HOSTNETMASK=${HOSTNETMASK:-255.255.255.0}
+                while true; do
+                    read -rp "Configure your netmask [255.255.255.0] : " HOSTNETMASK
+                    HOSTNETMASK=${HOSTNETMASK:-255.255.255.0}
+                    if [[ $HOSTNETMASK =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                        break
+                    else
+                        echo "Invalid network mask format. Please try again."
+                    fi
+                done
 
+                while true; do                
                 read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
                 HOSTGW=${HOSTGW:-192.168.0.1}
-
+                    if [[ $HOSTGW =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                        break
+                    else
+                        echo "Invalid gateway IP address format. Please try again."
+                    fi
+                done
+                   
+                while true; do
                 read -rp "Configure which DNS nameserver(s) to use [192.168.0.1] : " HOSTDNS
                 HOSTDNS=${HOSTDNS:-192.168.0.1}
+                    if [[ $HOSTDNS =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                        break
+                    else
+                        echo "Invalid DNS name server address format. Please try again."
+                    fi
+                done
+
+
+
 
                 while true; do
                     echo "### Review your configuration"
