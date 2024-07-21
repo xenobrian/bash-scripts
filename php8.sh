@@ -40,3 +40,5 @@ wget -qO - https://packages.sury.org/php/apt.gpg | apt-key add -
 apt update
 
 echo -e "\n\nSury repository for PHP 8 has been added\nThe current repository have PHP version of 8.0 and 8.2\nPut this command on your terminal for checking PHP version: php -v\nTo install php modules/extensions, use this format (without the <>):\napt install php8.0-<extension>"
+
+## TEST
