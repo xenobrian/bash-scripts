@@ -1,15 +1,23 @@
 #!/bin/bash
 
-# Checks whether the user is root or not
+# Script pre-run warning
+echo -e "Executing full-fledged.sh..."
+
+# Check whether the user is root or not
 if (( "$EUID" != 0 )); then
     echo "You are not root. Please run as root, now exiting."
     exit
 fi
 
 # Changes static network config to DHCP
-echo -e "THIS SCRIPT IS NOT FINISHED YET!\nThis script will install Postfix, Dovecot, Apache2, MariaDB, Roundcube"; sleep 1
-echo -e "Before installing, please make sure that this host's network is DHCP and is able to reach the internet\n/
-because there are some packages that is necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
+echo -e "THIS SCRIPT IS NOT FINISHED YET!\n
+Main packages that will be installed :\n
+Web Server\t: Apache2, libapache2-mod-php\n
+Mail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\n
+Database : MariaDB Server, Phpmyadmin"; sleep 1
+
+echo -e "Before installing, please make sure that this host is able to reach the internet\n/
+because there are some packages necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
 echo "Starting installation!"; sleep 1
 
 # DNS Server
@@ -21,14 +29,20 @@ echo "Updating repositories..."
 sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated. Now checking sed..."
 
-sedCheck() {
-    if ! hash sed 2> /dev/null; then
-        echo "The command 'sed' is not installed, will install now."
-        apt install sed -y
+packageChecker() {
+    local packagename = "$1"
+    if ! hash "$packagename" 2> /dev/null; then
+        echo "The command '$packagename' is not installed, will install now."
+        apt install "$packagename" -y
     else
-        exit 1
+        echo "'$packagename' is already installed."
     fi    
 }
+
+packageChecker "sed"
+packageChecker "wget"
+packageChecker "unzip"
+packageChecker "curl"
 
 # Network Configuration
 while true; do
@@ -135,10 +149,6 @@ echo "Succesfully changed the network configuration!"
 systemctl restart networking
 export pid=$!; wait $pid
 
-# Sed install
-sudo apt install sed -y > /dev/null 2>&1
-sudo systemctl restart networking
-
 # Static to dhcp[[:space:]]\+[0-9.] is looking for a sequence of one or more whitespace characters followed by digits and/or dots.
 sudo sed -i '/iface enp0s3 inet static/ {
     s/iface enp0s3 inet static/iface enp0s3 inet dhcp/
@@ -147,26 +157,22 @@ sudo sed -i '/iface enp0s3 inet static/ {
     s/gateway[[:space:]]\+[0-9]\+/#gateway/
 }' /etc/network/interfaces
 
-# Necessary packages installation
+# Apache2 install and configuration
 echo "Installing necessary packages..."
-sudo apt install apache2 libapache2-mod-php wget unzip curl -y > /dev/null 2>&1
-export pid=$!; wait $pid
-echo "Packages have been installed, will configure Apache2 in 3 seconds..."; sleep 3
+apt install apache2 libapache2-mod-php ## -y > /dev/null 2>&1
+echo "Packages have been installed, will configure Apache2..."; sleep 2
 
-# Apache2 for website configuration
 read -p "What domain name would you like to use?(use FQDN)[www.example.org]" domainname
-sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/website.conf
-sudo sed -i 's/ServerName www.example.com/ServerName $domainname/' /etc/apache2/sites-available/website.conf
-sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/website/|' /etc/apache2/sites-available/website.conf
-sudo a2ensite $.conf && sudo a2dissite 000-default.conf 
-sudo systemctl restart apache2.service && sudo systemctl status apache2
-echo "Will install and configure Bind9 in 3 seconds..."
-sleep 3
+cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/$domainname.conf
+sed -i 's/ServerName www.example.com/ServerName $domainname/' /etc/apache2/sites-available/$domainname.conf
+sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/website/|' /etc/apache2/sites-available/$domainname.conf
+a2ensite $domainname.conf && a2dissite 000-default.conf 
+systemctl restart apache2.service && systemctl status apache2
 
-# Bind9 configuration
-sudo apt install bind9 bind9utils dnsutils -y > /dev/null 2>&1
-export pid $!; wait $pid
-echo "Packages installed. Configuring Bind9 in 3 seconds..."; sleep 3
+# Bind9 install and configuration
+echo "Will install and configure Bind9..."
+apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
+echo "We will configure Bind9 now..."; sleep 2
 
 read -p "Please input the name that should be used for naming the db :" dbname
 read -p "Please input your network IP ([192].168.0.0) :" ip
