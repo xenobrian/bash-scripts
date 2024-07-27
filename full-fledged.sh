@@ -11,12 +11,8 @@ fi
 
 # Changes static network config to DHCP
 echo -e "THIS SCRIPT IS NOT FINISHED YET!\n
-Main packages that will be installed :\n
-Web Server\t: Apache2, libapache2-mod-php\n
-Mail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\n
-Database : MariaDB Server, Phpmyadmin"; sleep 1
-
-echo -e "Before installing, please make sure that this host is able to reach the internet because\n there are some packages necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
+Main packages that will be installed :\nWeb Server\t: Apache2, libapache2-mod-php\nMail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\nDatabase\t: MariaDB Server, Phpmyadmin"; sleep 1
+echo -e "Before installing, please make sure that this host is able to reach the internet because\nthere are some packages necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
 echo "Starting installation!"; sleep 1
 
 # DNS Server
