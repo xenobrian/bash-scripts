@@ -22,7 +22,7 @@ echo "Starting installation!"; sleep 1
 # Repository update
 echo "Updating repositories..."
 apt update > /dev/null 2>&1; export pid=$!; wait $pid
-echo "Repositories has been updated. Now checking sed..."
+echo "Repositories has been updated. Now checking for necessary packages..."
 
 packageChecker() {
     local packagename="$1"
