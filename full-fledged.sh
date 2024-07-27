@@ -16,8 +16,7 @@ Web Server\t: Apache2, libapache2-mod-php\n
 Mail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\n
 Database : MariaDB Server, Phpmyadmin"; sleep 1
 
-echo -e "Before installing, please make sure that this host is able to reach the internet\n/
-because there are some packages necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
+echo -e "Before installing, please make sure that this host is able to reach the internet because\n there are some packages necessary to be installed beforehand. Ctrl+C to cancel in 5 seconds..."; sleep 5
 echo "Starting installation!"; sleep 1
 
 # DNS Server
@@ -26,17 +25,17 @@ echo "Starting installation!"; sleep 1
 
 # Repository update
 echo "Updating repositories..."
-sudo apt update > /dev/null 2>&1; export pid=$!; wait $pid
+apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated. Now checking sed..."
 
 packageChecker() {
-    local packagename = "$1"
+    local packagename="$1"
     if ! hash "$packagename" 2> /dev/null; then
         echo "The command '$packagename' is not installed, will install now."
         apt install "$packagename" -y
     else
         echo "'$packagename' is already installed."
-    fi    
+    fi
 }
 
 packageChecker "sed"
@@ -113,7 +112,6 @@ while true; do
 
                     case "$USERDECISION" in
                         [yY][eE][sS])
-                        sedCheck()
                         echo "Network will be set as the configuration above"
                         sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" ./test.txt
                         sed -i "s|iface $HOSTINT inet dhcp|iface $HOSTINT inet static\n\taddress $HOSTIP\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|" ./test.txt
@@ -150,7 +148,7 @@ systemctl restart networking
 export pid=$!; wait $pid
 
 # Static to dhcp[[:space:]]\+[0-9.] is looking for a sequence of one or more whitespace characters followed by digits and/or dots.
-sudo sed -i '/iface enp0s3 inet static/ {
+sed -i '/iface enp0s3 inet static/ {
     s/iface enp0s3 inet static/iface enp0s3 inet dhcp/
     s/address[[:space:]]\+[0-9]\+/#address/
     s/netmask[[:space:]]\+[0-9]\+/#netmask/
@@ -176,13 +174,13 @@ echo "We will configure Bind9 now..."; sleep 2
 
 read -p "Please input the name that should be used for naming the db :" dbname
 read -p "Please input your network IP ([192].168.0.0) :" ip
-sudo cp /etc/bind/db.local /etc/bind/db.$dbname && sudo cp /etc/bind/db.127 /etc/bind/db.$ip
-sudo tail -n 20 /etc/bind/named.conf.default-zones >> /etc/bind/named.conf.local
-sudo sed -i "s/file /"
+cp /etc/bind/db.local /etc/bind/db.$dbname && cp /etc/bind/db.127 /etc/bind/db.$ip
+tail -n 20 /etc/bind/named.conf.default-zones >> /etc/bind/named.conf.local
+sed -i "s/file /"
 
 # Postfix and Dovecot
 echo "Installing Postfix, Dovecot, and related packages..."
-sudo apt install postfix dovecot-imapd dovecot-pop3d -y > /dev/null 2>&1
+apt install postfix dovecot-imapd dovecot-pop3d -y > /dev/null 2>&1
 export pid=$!
 wait $pid
 echo "Postfix and Dovecot related packages has been installed."
@@ -190,4 +188,4 @@ sleep 1
 echo "Now configuring mail server..."
 echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
 echo "message_size_limit = 20480000" >> /etc/postfix/main.cf
-sudo systemctl restart postfix
+systemctl restart postfix
