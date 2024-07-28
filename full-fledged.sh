@@ -34,14 +34,6 @@ packageChecker () {
     fi
 }
 
-interfaceConfig () {
-    local int="$HOTSINT"; local ip="$HOSTIP"; local mask="$HOSTNETMASK"; local gw="$HOSTGW"; local dns="$HOSTDNS"
-
-    sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" /etc/network/interfaces
-    sed -i "s|iface $ip inet dhcp|iface $int inet static\n\taddress $ip\n\tnetmask $mask\n\tgateway $gw\n\tdns-nameservers $dns|" /etc/network/interfaces
-}
-                        
-
 packageChecker "net-tools"
 packageChecker "sed"
 packageChecker "wget"
@@ -110,11 +102,18 @@ while true; do
                     echo "### Review your configuration"
                     while true; do
                         echo -e "Your IP configuration as follows :\nInterface\t: $HOSTINT\nIP address\t: $HOSTIP\nNetmask\t\t: $HOSTNETMASK\nGateway\t\t: $HOSTGW\nDNS server\t: $HOSTDNS"
-                    read -rp "Is this correct?[yes/no] : " USERDECISION
+                        read -rp "Is this correct?[yes/no] : " USERDECISION
 
                     case "$USERDECISION" in
                         [yY][eE][sS])
                         echo "Network will be set as the configuration above"
+                        interfaceConfig () {
+                            local int="$HOTSINT"; local ip="$HOSTIP"; local mask="$HOSTNETMASK"; local gw="$HOSTGW"; local dns="$HOSTDNS"
+
+                            sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" /etc/network/interfaces
+                            sed -i "s|iface $ip inet dhcp|iface $int inet static\n\taddress $ip\n\tnetmask $mask\n\tgateway $gw\n\tdns-nameservers $dns|" /etc/network/interfaces
+                        }
+                        
                         interfaceConfig "$HOSTINT"
                         break 4;;
 
