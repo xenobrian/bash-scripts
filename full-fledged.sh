@@ -78,7 +78,7 @@ while true; do
                     fi
                 done
 
-                while true; do 
+                while true; do
                 read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
                 HOSTGW=${HOSTGW:-192.168.0.1}
                     if [[ $HOSTGW =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -111,9 +111,9 @@ while true; do
                             local int="$HOTSINT"; local ip="$HOSTIP"; local mask="$HOSTNETMASK"; local gw="$HOSTGW"; local dns="$HOSTDNS"
 
                             sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" /etc/network/interfaces
-                            sed -i "s|iface $ip inet dhcp|iface $int inet static\n\taddress $ip\n\tnetmask $mask\n\tgateway $gw\n\tdns-nameservers $dns|" /etc/network/interfaces
+                            sed -i "s|iface $int inet dhcp|iface $int inet static\n\taddress $ip\n\tnetmask $mask\n\tgateway $gw\n\tdns-nameservers $dns|" /etc/network/interfaces
                         }
-                        
+
                         interfaceConfig "$HOSTINT"
                         break 4;;
 
