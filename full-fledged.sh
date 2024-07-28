@@ -24,7 +24,7 @@ echo "Updating repositories..."
 apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated. Now checking for necessary packages..."
 
-packageChecker() {
+packageChecker () {
     local packagename="$1"
     if ! hash "$packagename" 2> /dev/null; then
         echo "The command '$packagename' is not installed, will install now."
@@ -34,6 +34,15 @@ packageChecker() {
     fi
 }
 
+interfaceConfig () {
+    local int="$HOTSINT"; local ip="$HOSTIP"; local mask="$HOSTNETMASK"; local gw="$HOSTGW"; local dns="$HOSTDNS"
+
+    sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" /etc/network/interfaces
+    sed -i "s|iface $ip inet dhcp|iface $int inet static\n\taddress $ip\n\tnetmask $mask\n\tgateway $gw\n\tdns-nameservers $dns|" /etc/network/interfaces
+}
+                        
+
+packageChecker "net-tools"
 packageChecker "sed"
 packageChecker "wget"
 packageChecker "unzip"
@@ -77,7 +86,7 @@ while true; do
                     fi
                 done
 
-                while true; do                
+                while true; do 
                 read -rp "Configure your gateway [192.168.0.1] : " HOSTGW
                 HOSTGW=${HOSTGW:-192.168.0.1}
                     if [[ $HOSTGW =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -86,7 +95,7 @@ while true; do
                         echo "Invalid gateway IP address format. Please try again."
                     fi
                 done
-                   
+
                 while true; do
                 read -rp "Configure which DNS nameserver(s) to use [192.168.0.1] : " HOSTDNS
                 HOSTDNS=${HOSTDNS:-192.168.0.1}
@@ -97,9 +106,6 @@ while true; do
                     fi
                 done
 
-
-
-
                 while true; do
                     echo "### Review your configuration"
                     while true; do
@@ -109,8 +115,7 @@ while true; do
                     case "$USERDECISION" in
                         [yY][eE][sS])
                         echo "Network will be set as the configuration above"
-                        sed -i "s|allow-hotplug $HOSTINT|auto $HOSTINT|" ./test.txt
-                        sed -i "s|iface $HOSTINT inet dhcp|iface $HOSTINT inet static\n\taddress $HOSTIP\n\tnetmask $HOSTNETMASK\n\tgateway $HOSTGW\n\tdns-nameservers $HOSTDNS|" ./test.txt
+                        interfaceConfig "$HOSTINT"
                         break 4;;
 
                         [nN][oO])
