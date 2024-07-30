@@ -39,4 +39,4 @@ dockerInstall
 
 
 read -rp "User to add to the 'docker' group. Or 'none' to not add another user : " username
-userAdd "username"
+userAdd "git $username"
