@@ -13,7 +13,7 @@ function dockerInstall {
         apt update;
         apt install ca-certificates curl -y
 
-        for i in {1..3}; do
+        for i in {1..2}; do
             install -m 0755 -d /etc/apt/keyrings
         done
 
