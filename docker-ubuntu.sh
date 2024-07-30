@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 if (( $EUID != 0 )); then
     echo "Please execute as root.";
