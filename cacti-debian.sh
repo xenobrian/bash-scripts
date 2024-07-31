@@ -14,9 +14,9 @@ function cactiDependencies() {
 
 function cactiDownload() {
     git clone -b 1.2.x  https://github.com/Cacti/cacti.git
-    read -rp "Move cacti to /var/www/html? [y/n] : " movecacti
 
     while true; do
+        read -rp "Move cacti to /var/www/html? [y/n] : " movecacti
         case "$movecacti" in
             y|Y)
             mv cacti /var/www/html
