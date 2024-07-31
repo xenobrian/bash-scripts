@@ -29,6 +29,7 @@ function cactiDownload() {
 
             *)
             echo "Not a valid answer."
+            break;;
         esac
     done
 }
