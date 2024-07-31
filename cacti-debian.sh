@@ -37,13 +37,13 @@ function dbCreation() {
 
     read -rp "Root account password for cacti database : " PASS
 
-    mysql -u root -p "$PASS" << EOF
-    CREATE DATABASE cacti DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ;
-    GRANT ALL PRIVILEGES ON cacti.* TO 'cacti'@'localhost' IDENTIFIED BY 'cacti';
-    GRANT SELECT ON mysql.time_zone_name TO cacti@localhost;
-    ALTER DATABASE cacti CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    FLUSH PRIVILEGES;
-    EOF
+    mysql -u root -p "$PASS" <<EOF
+CREATE DATABASE cacti DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ;
+GRANT ALL PRIVILEGES ON cacti.* TO 'cacti'@'localhost' IDENTIFIED BY 'cacti';
+GRANT SELECT ON mysql.time_zone_name TO cacti@localhost;
+ALTER DATABASE cacti CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+FLUSH PRIVILEGES;
+EOF
 
     mysql -u root cacti < /var/www/html/cacti/cacti.sql
 }
