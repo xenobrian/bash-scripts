@@ -29,18 +29,17 @@ function cactiDownload() {
 
             *)
             echo "Not a valid answer."
-            break;;
         esac
     done
 }
 
 function dbCreation() {
-    yes | mysql_secure_installation
+    mysql_secure_installation
 
     read -rp "Root account password for cacti database : " PASS
 
     mysql -u root -p "$PASS" <<EOF
-CREATE DATABASE cacti DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ;
+CREATE DATABASE cacti DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 GRANT ALL PRIVILEGES ON cacti.* TO 'cacti'@'localhost' IDENTIFIED BY 'cacti';
 GRANT SELECT ON mysql.time_zone_name TO cacti@localhost;
 ALTER DATABASE cacti CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
