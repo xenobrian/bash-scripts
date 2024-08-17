@@ -235,17 +235,43 @@ while true; do
 done
 
 systemctl restart apache2.service && systemctl status apache2
+
 # Bind9 install and configuration
 echo "Will install and configure Bind9..."
 apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
-read -p "Please input the name that should be used for naming the db :" dbname
-read -p "Please input your network IP ([192].168.0.0) :" ip
-cp /etc/bind/db.local /etc/bind/db.$dbname && cp /etc/bind/db.127 /etc/bind/db.$ip
-tail -n 20 /etc/bind/named.conf.default-zones >> /etc/bind/named.conf.local
-sed -i "s/file /"
+export BIND_PATH=/etc/bind
 
+function zonefilecreate() {
+    local filename="$1"
+    cp $BIND_PATH/db.local $BIND_PATH/db.$filename
+}
+
+function zonefileedit() {
+    local filename="$1"
+    local ns="$2"
+    sed -i "s/localhost/$ns"
+}
+
+while true; do
+    while true; do
+        read -rp "Input the name for zone file db [db.name] : " ZONE_FILE_NAME
+        zonefilecreate "$ZONE_FILE_NAME"
+
+        read -rp "What it the authoritative name server to use? [ns1.example.net] : " AUTH_DOMAIN
+        zonefileedit "$ZONE_FILE_NAME $AUTH_DOMAIN"
+
+        read -rp "What subdomain would you like to create? [www.example.net] : " SUBDOMAIN
+        zonefiledit "$SUBDOMAIN"
+
+        read -rp ""
+    done
+    read -rp "Please input your network IP ([192].168.0.0) :" ip
+    cp /etc/bind/db.local /etc/bind/db.$dbname && cp /etc/bind/db.127 /etc/bind/db.$ip
+    tail -n 20 /etc/bind/named.conf.default-zones >> /etc/bind/named.conf.local
+    sed -i "s/file /"
+done
 # Postfix and Dovecot
 echo "Installing Postfix, Dovecot, and related packages..."
 apt install postfix dovecot-imapd dovecot-pop3d -y > /dev/null 2>&1
