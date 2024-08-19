@@ -9,7 +9,9 @@ if (( "$EUID" != 0 )); then
     exit
 fi
 
-read -rp "######### UNFINISHED SCRIPT #########\nDo not execute this script in a deployment-ready server!\n(P)roceed       (A)bort : " WARNING
+read -rp "######### UNFINISHED SCRIPT #########\n\
+Do not execute this script in a deployment-ready server!\n\
+(P)roceed       (A)bort : " WARNING
 case "$WARNING" in
     p|P)
     echo "Note that you do this with your own decision!"
@@ -20,19 +22,14 @@ case "$WARNING" in
     exit;;
 esac
 
-echo -e "Main packages that will be installed :\nWeb Server\t: Apache2, libapache2-mod-php\nMail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\nDatabase\t: MariaDB Server, Phpmyadmin"; sleep 1
+echo -e "Main packages that will be installed :\nWeb Server\t: Apache2\nMail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\nDatabase\t: MariaDB Server, Phpmyadmin\nMonitoring\t: Cacti\nCMS\t\t: Wordpress"; sleep 1
 echo -e "Before installing, please make sure that this host is able to reach the internet. Ctrl+C to cancel in 5 seconds..."; sleep 5
 echo "Starting installation!";
-
-# DNS Server
-## echo "Making sure your DNS is set to 8.8.8.8 first..."; sleep 1
-## echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
 # Repository update
 echo "Updating repositories..."
 apt update > /dev/null 2>&1; export pid=$!; wait $pid
 echo "Repositories has been updated. Now checking for necessary packages..."
-
 
 packageChecker () {
     local packagename="$1"
@@ -297,19 +294,28 @@ while true; do
     zoneFileCreate "$FILE_NAME" "$PTR_FILE_NAME"
 
     while true; do
-        echo "You will need to edit the zone and PTR records file. Choose which tool to use : "
+        echo "You will need to edit these files :"
+        echo -e "- The zone file (db.$FILE_NAME)\n\
+        - PTR records file (db.$PTR_FILE_NAME)\n\
+        - Local DNS server configuration file (named.conf.local)\n\
+        - Bind9 settings (named.conf.options)\n\
+        Choose which tool to use : "
         read -rp "(N)ano       (V)im       (S)cript       (A)bort: " EDIT_METHOD
         case "$EDIT_METHOD" in
             n|N)
             packageChecker "nano" -y
             nano $BIND_PATH/db.$FILE_NAME
             nano $BIND_PATH/db.$PTR_FILE_NAME
+            nano $BIND_PATH/named.conf.local
+            nano $BIND_PATH/named.conf.options
             break 2;;
 
             v|V)
             packageChecker "vim" -y
             vim $BIND_PATH/db.$FILE_NAME
             vim $BIND_PATH/db.$PTR_FILE_NAME
+            vim $BIND_PATH/named.conf.local
+            vim $BIND_PATH/named.conf.options
             break 2;;
 
             s|S)
@@ -325,14 +331,32 @@ while true; do
     done
 done
 
+systemctl restart bind9 && systemctl status bind9
+
+# PHP
+for pkgs in php php-mysql php-snmp php-xml php-mbstring php-json php-gd php-gmp php-zip php-ldap php-mc php-curl php-dom php-simplexml; do
+    apt install $pkgs -y
+done
+
+# MariaDB
+apt install mariadb-server
+
 # Postfix and Dovecot
 echo "Installing Postfix, Dovecot, and related packages..."
-apt install postfix dovecot-imapd dovecot-pop3d -y > /dev/null 2>&1
-export pid=$!
-wait $pid
-echo "Postfix and Dovecot related packages has been installed."
-sleep 1
-echo "Now configuring mail server..."
+
+for pkgs in postfix dovecot-imapd dovecot-pop3d; do
+    apt install $pkgs -y
+done
+
+echo "Postfix and Dovecot related packages has been installed. Now configuring the mail server..."
 echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
 echo "message_size_limit = 20480000" >> /etc/postfix/main.cf
 systemctl restart postfix
+
+# Roundcube
+apt install roundcube roundcube-core
+
+# Cacti
+for pkgs in rrdtool mariadb-client snmp snmpd cacti; do
+    apt install $pkgs -y
+done
