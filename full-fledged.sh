@@ -241,37 +241,90 @@ echo "Will install and configure Bind9..."
 apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
-export BIND_PATH=/etc/bind
+BIND_PATH=/etc/bind
 
-function zonefilecreate() {
+function zoneFileCreate {
     local filename="$1"
+    local ptrfile="$2"
     cp $BIND_PATH/db.local $BIND_PATH/db.$filename
+    cp $BIND_PATH/db.127 $BIND_PATH/db.$ptrfile
 }
 
-function zonefileedit() {
+function zoneFileEdit {
     local filename="$1"
     local ns="$2"
     sed -i "s/localhost/$ns"
 }
 
-while true; do
+function subdomainCreate {
+    local subdomain="$1"
+    local record="$2"
+    local ip="$3"
+
+    echo -e "$subdomain\tIN\t$record\t$ip" >> $BIND_PATH/$FILE_NAME
+}
+
+function bindscriptconfig {
     while true; do
-        read -rp "Input the name for zone file db [db.name] : " ZONE_FILE_NAME
-        zonefilecreate "$ZONE_FILE_NAME"
+        while true; do
+            read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
+            read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV] : " RECORD
+            read -rp "To which IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
+            SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
+            if [[ $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                break
+            else
+                echo "Invalid IP address format. Please try again."
+            fi
 
-        read -rp "What it the authoritative name server to use? [ns1.example.net] : " AUTH_DOMAIN
-        zonefileedit "$ZONE_FILE_NAME $AUTH_DOMAIN"
+            subdomainCreate "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
 
-        read -rp "What subdomain would you like to create? [www.example.net] : " SUBDOMAIN
-        zonefiledit "$SUBDOMAIN"
+            read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
+            case "$SUBDOMAIN_RECREATE_DECISION" in
+                y|Y)
+                break;;
 
-        read -rp ""
+                n|N)
+                break 2;;
+            esac
+        done
     done
-    read -rp "Please input your network IP ([192].168.0.0) :" ip
-    cp /etc/bind/db.local /etc/bind/db.$dbname && cp /etc/bind/db.127 /etc/bind/db.$ip
-    tail -n 20 /etc/bind/named.conf.default-zones >> /etc/bind/named.conf.local
-    sed -i "s/file /"
+}
+
+while true; do
+    read -rp "Input the name for zone file. db.((name)) : " FILE_NAME
+    read -rp "Input the name for PTR record file. db.((number)) : " PTR_FILE_NAME
+    zoneFileCreate "$FILE_NAME" "$PTR_FILE_NAME"
+
+    while true; do
+        echo "You will need to edit the zone and PTR records file. Choose which tool to use : "
+        read -rp "(N)ano       (V)im       (S)cript       (A)bort: " EDIT_METHOD
+        case "$EDIT_METHOD" in
+            n|N)
+            packageChecker "nano" -y
+            nano $BIND_PATH/db.$FILE_NAME
+            nano $BIND_PATH/db.$PTR_FILE_NAME
+            break 2;;
+
+            v|V)
+            packageChecker "vim" -y
+            vim $BIND_PATH/db.$FILE_NAME
+            vim $BIND_PATH/db.$PTR_FILE_NAME
+            break 2;;
+
+            s|S)
+            bindscriptconfig
+            break 2;;
+
+            a|A)
+            break 2;;
+
+            *)
+            echo "Not a valid answer."
+        esac
+    done
 done
+
 # Postfix and Dovecot
 echo "Installing Postfix, Dovecot, and related packages..."
 apt install postfix dovecot-imapd dovecot-pop3d -y > /dev/null 2>&1
