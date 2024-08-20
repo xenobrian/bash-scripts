@@ -258,24 +258,29 @@ function subdomainCreate {
     local record="$2"
     local ip="$3"
 
-    echo -e "$subdomain\tIN\t$record\t$ip" >> $BIND_PATH/$FILE_NAME
+    echo -e "$subdomain\tIN\t$record\t$ip" >> $BIND_PATH/db.$FILE_NAME
 }
 
 function bindscriptconfig {
+    read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " REPLACE
+    sed -e "s/localhost/$REPLACE/" -e "s/.localhost/.$REPLACE/" $BIND_PATH/db.$FILE_NAME
+
     while true; do
+        read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
+        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV] : " RECORD
+
         while true; do
-            read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
-            read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV] : " RECORD
-            read -rp "To which IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
+        read -rp "To which IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
             SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
             if [[ $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-                break
+                subdomainCreate "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
+                break 2
             else
                 echo "Invalid IP address format. Please try again."
             fi
+        done
 
-            subdomainCreate "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
-
+        while true; do
             read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
             case "$SUBDOMAIN_RECREATE_DECISION" in
                 y|Y)
@@ -316,13 +321,27 @@ while true; do
             vim $BIND_PATH/db.$PTR_FILE_NAME
             vim $BIND_PATH/named.conf.local
             vim $BIND_PATH/named.conf.options
-            break 2;;
+            break;;
 
             s|S)
             bindscriptconfig
-            break 2;;
+            break;;
 
             a|A)
+            break;;
+
+            *)
+            echo "Not a valid answer."
+        esac
+    done
+
+    while true; do
+        read -rp "Create another file? [y/N] : " CREATE
+        case "$CREATE" in
+            y|Y)
+            break;;
+
+            n|N)
             break 2;;
 
             *)
