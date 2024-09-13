@@ -357,23 +357,64 @@ for pkgs in php php-mysql php-snmp php-xml php-mbstring php-json php-gd php-gmp 
     apt install $pkgs -y
 done
 
-# MariaDB
+# Database (MariaDB)
 apt install mariadb-server
+mysql_secure_installation
 
-# Postfix and Dovecot
+# Mail Server (Postfix and Dovecot)
 echo "Installing Postfix, Dovecot, and related packages..."
+apt install postfix dovecot-imapd dovecot-pop3d -y
 
-for pkgs in postfix dovecot-imapd dovecot-pop3d; do
-    apt install $pkgs -y
-done
+PATH=/etc/dovecot/conf.d
 
-echo "Postfix and Dovecot related packages has been installed. Now configuring the mail server..."
-echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
-echo "message_size_limit = 20480000" >> /etc/postfix/main.cf
+sed -i 's/home_mailbox = Maildir/#home_mailbox = Maildir/' /etc/postfix/main.cf
+maildirmake.dovecot /etc/skel/Maildir
+dpkg-reconfigure postfix
 systemctl restart postfix
 
+sed -i 's/# listen = */listen = */' /etc/dovecot/dovecot.conf
+sed -i 's/# disable_plaintext_auth = yes/disable_plaintext_auth = no/' $PATH/10-auth.conf
+sed -i 's/# mail_location = maildir:~/Maildir/mail_location = maildir:~/Maildir/' $PATH/10-mail.conf
+sed -i 's/mail_location = mbox:~/mail:INBOX=/var/mail/%u/# mail_location = mbox:~/mail:INBOX=/var/mail/%u/' $PATH/10-mail.conf
+systemctl restart dovecot
+
+# echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
+# echo "message_size_limit = 20480000" >> /etc/postfix/main.cf
+# systemctl restart postfix
+
 # Roundcube
-apt install roundcube roundcube-core
+apt install roundcube
+
+while true; do
+    while true; do
+        read -rp "Mail server domain name (use FQDN) [mail.example.net] : " MAILSERV_DOM
+        MAILSERV_DOM=${MAILSERV_DOM:-mail.example.net}
+
+        read -rp "SMTP server domain name [example.net] : " SMTP_DOM
+        MAILSERV_DOM=${MAILSERV_DOM:-example.net}
+
+        sed -i "s/$config['smtp_port'] = 587/$config['smtp_port'] = 25/" /etc/roundcube/config.inc.php
+        sed -i "s/$config['smtp_user'] = '%u';/$config['smtp_user'] = '';/" /etc/roundcube/config.inc.php
+        sed -i "s/$config['smtp_pass'] = '%p';/$config['smtp_pass'] = '';/" /etc/roundcube/config.inc.php
+
+        while true; do
+            read -rp "Reconfigure Roundcube? This command will run dpkg-reconfigure [y/N]: " RECONFIG
+            case "$RECONFIG" in
+                y|Y)
+                dpkg-reconfigure roundcube-core
+                ;;
+
+                n|N)
+                break;;
+
+                *)
+                echo "Not a valid choice. Please choose correctly"
+                ;;
+            esac
+        done
+        break 2
+    done
+done
 
 # Cacti
 for pkgs in rrdtool mariadb-client snmp snmpd cacti; do
