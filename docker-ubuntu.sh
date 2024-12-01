@@ -5,7 +5,39 @@ if (( $EUID != 0 )); then
     exit;
 fi
 
+linux_distro = ''
+
+case "$(lsb_release)" in
+    "Debian")
+        echo "You are running Debian"
+        linux_distro = "Debian";;
+
+    "Ubuntu")
+        echo "You are running Ubuntu"
+        linux_distro = "Ubuntu";;
+
+    "AlmaLinux" | "Rocky" | "RedhatEnterpriseServer" |  "CentOS")
+        echo "You are running a RHEL or its derivative."
+        linux_distro = "RHEL-like";;
+
+    "Fedora" | "openSUSE")
+        echo "You are running a non-RHEL, rpm-using Linux distribution."
+        linux_distro = "rpm-using";;
+esac
+
 function dockerInstall {
+        local packagemanager = ''
+
+        if [[ $linux_distro = "Debian" ]] || [[ $linux_distro = "Ubuntu" ]]; then
+            packagemanager='apt'
+        elif [[ $linux_distro = "RHEL-like"]]; then
+            packagemanager='dnf'
+            dockerRHELinstall
+        elif [[ linux_distro = "rpm-using"]]; then
+            packagemanager='dnf'
+            dockerRPMinstall
+        fi
+
         for old_package in docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc; do
             apt remove $old_package -y
         done
