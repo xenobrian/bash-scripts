@@ -260,7 +260,7 @@ systemctl restart postfix
 sed -i 's/# listen = */listen = */' /etc/dovecot/dovecot.conf
 sed -i 's/# disable_plaintext_auth = yes/disable_plaintext_auth = no/' $PATH/10-auth.conf
 sed -i 's/# mail_location = maildir:~/Maildir/mail_location = maildir:~/Maildir/' $PATH/10-mail.conf
-sed -i 's/mail_location = mbox:~/mail:INBOX=/var/mail/%u/# mail_location = mbox:~/mail:INBOX=/var/mail/%u/' $PATH/10-mail.conf
+sed -i 's|mail_location = mbox:~/mail:INBOX=/var/mail/%u|# mail_location = mbox:~/mail:INBOX=/var/mail/%u|' $PATH/10-mail.conf
 systemctl restart dovecot
 
 # echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
