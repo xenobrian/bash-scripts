@@ -57,33 +57,34 @@ done
 # Apache2 install and configuration
 echo "Installing necessary packages..."
 apt install apache2 libapache2-mod-php -y ## > /dev/null 2>&1
-export VHOST_PATH=/etc/apache2/sites-available
+APACHE_VHOST_CONF_PATH=/etc/apache2/sites-available
 
+cp $APACHE_VHOST_CONF_PATH/000-default.conf $APACHE_VHOST_CONF_PATH/template.conf
+sed -i '22,28d' $APACHE_VHOST_CONF_PATH/template.conf
+sed -i '14,19d' $APACHE_VHOST_CONF_PATH/template.conf
+sed -i '2,8d' $APACHE_VHOST_CONF_PATH/template.conf
+        
 echo "Apache2 configuration section. Input carefully."
 while true; do
     while true; do
         read -rp "What domain name would you like to use?(use FQDN)[www.example.org] : " DOMAIN_NAME
         DOMAIN_NAME=${DOMAIN_NAME:-www.example.com}
-        cp $VHOST_PATH/000-default.conf $VHOST_PATH/template.conf
-        sed -i '22,28d' $VHOST_PATH/template.conf
-        sed -i '14,19d' $VHOST_PATH/template.conf
-        sed -i '2,8d' $VHOST_PATH/template.conf
 
-        cp $VHOST_PATH/template.conf $VHOST_PATH/$DOMAIN_NAME.conf
-        sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $VHOST_PATH/$DOMAIN_NAME.conf
+        cp $APACHE_VHOST_CONF_PATH/template.conf $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME.conf
+        sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME.conf
 
         echo "Make sure that your website directory exists."
-        read -rp "Specify the path of this website's directory [/var/www/html] : " WEB_PATH
-        WEB_PATH=${WEB_PATH:-/var/www/html}
-        sed -i "s|DocumentRoot /var/www/html|DocumentRoot $WEB_PATH|" $VHOST_PATH/$DOMAIN_NAME.conf
+        read -rp "Specify the path of this website's directory [/var/www/html] : " ROOT_WEBDIR
+        ROOT_WEBDIR=${ROOT_WEBDIR:-/var/www/html}
+        sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME.conf
 
-        echo "Since you are root, the user:group of the $WEB_PATH is probably root:root."
+        echo "Since you are root, the user:group of the $ROOT_WEBDIR is probably root:root."
         while true; do
-            read -rp "Change user:group ownership of $WEB_PATH? [y/N] : " OWNER_CHANGE_DECISION
+            read -rp "Change user:group ownership of $ROOT_WEBDIR? [y/N] : " OWNER_CHANGE_DECISION
             case "$OWNER_CHANGE_DECISION" in
                 y|Y)
                 read -rp "Chown to [user:group] : " CHOWN
-                chown $CHOWN $WEB_PATH
+                chown -R $CHOWN $ROOT_WEBDIR
                 break;;
 
                 n|N)
@@ -125,72 +126,120 @@ while true; do
     done
 done
 
-systemctl restart apache2.service && systemctl status apache2
+systemctl restart apache2 && systemctl status apache2
 
 # Bind9 install and configuration
 echo "Will install and configure Bind9..."
 apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
-BIND_PATH=/etc/bind
 
-function zoneFileCreate {
-    local filename="$1"
-    local ptrfile="$2"
-    cp $BIND_PATH/db.local $BIND_PATH/db.$filename
-    cp $BIND_PATH/db.127 $BIND_PATH/db.$ptrfile
+
+function PTRFileConfig {
+    local
+
 }
 
-function zoneFileEdit {
-    local filename="$1"
-    local ns="$2"
-    sed -i "s/localhost/$ns"
-}
+function BindScriptConfig() {
 
-function subdomainCreate {
-    local subdomain="$1"
-    local record="$2"
-    local ip="$3"
+    function FileCreate {
+        local zone_filename="$1"
+        local ptr_filename="$2"
+        cp /etc/bind/db.local /etc/bind/db.$zone_filename
+        cp /etc/bind/db.127 /etc/bind/db.$ptr_filename
+    }
 
-    echo -e "$subdomain\tIN\t$record\t$ip" >> $BIND_PATH/db.$FILE_NAME
-}
+    function ZoneFileEdit {
+        local filename="$1"
+        local domain_name="$2"
 
-function bindscriptconfig {
-    read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " REPLACE
-    sed -e "s/localhost/$REPLACE/" -e "s/.localhost/.$REPLACE/" $BIND_PATH/db.$FILE_NAME
+        sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename
+        sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename
+        sed -e "s/localhost/$domain_name/" -e "s/.localhost/.$filename/" /etc/bind/db.$filename
+    }
+
+    function PointerFileEdit {
+        local filename="$1"
+        local domain_name="$2"
+
+        sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename
+        sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename
+        sed -e "s/localhost/$domain_name/" -e "s/.localhost/.$filename/" /etc/bind/db.$filename
+    }
+
+    function SubdomainCreate {
+        local root_domain="$1"
+        local subdomain="$2"
+        local record="$3"
+        local ip="$4"
+        local priority="$5"
+
+        if [[ $record == "MX" ]]; then
+            echo -e "$root_domain.\tIN\tMX\t$priority\t$subdomain.$root_domain." >> /etc/bind/db.$FILE_NAME
+        fi
+
+        if [[ $record == "SRV" ]]; then
+            echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN SRV $priority $weight $port\t$subdomain."
+        fi
+
+        echo -e "$subdomain\tIN\t$record\t$ip" >> /etc/bind/db.$FILE_NAME
+    }
+
+    read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
+    read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
+    ZoneFileEdit "$FILE_NAME" "$BIND_DOM_NAME"
 
     while true; do
         read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
-        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV] : " RECORD
+        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
 
         while true; do
-        read -rp "To which IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
+            read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
             SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
-            if [[ $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-                subdomainCreate "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
-                break 2
-            else
+            if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
                 echo "Invalid IP address format. Please try again."
+            else
+                break
             fi
         done
+
+        if [[ $RECORD == "MX "]]; then
+            read -rp "What is the priority? [0-65535] : " PRIORITY
+        elif [[ $RECORD == "SRV" ]]; then
+            read -rp "What service is this intended for? [sip, xmpp, ldap] : " SERVICE
+            read -rp "Which protocol does this service use? [tcp/udp] : " PROTOCOL
+            read -rp "What is the TTL for this record? : " TTL
+            read -rp "What is the priority? : " PRIORITY
+            read -rp "What is the weight? : " WEIGHT
+            read -rp "What is the port? : " PORT
+        fi
+
+        SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
 
         while true; do
             read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
             case "$SUBDOMAIN_RECREATE_DECISION" in
                 y|Y)
-                break;;
+                break
+                ;;
 
                 n|N)
-                break 2;;
+                break 2
+                ;;
+
+                *)
+                echo "Not valid."
+                ;;
             esac
         done
     done
+
 }
 
 while true; do
     read -rp "Input the name for zone file. db.((name)) : " FILE_NAME
     read -rp "Input the name for PTR record file. db.((number)) : " PTR_FILE_NAME
-    zoneFileCreate "$FILE_NAME" "$PTR_FILE_NAME"
+    FileCreate "$FILE_NAME" "$PTR_FILE_NAME"
 
     while true; do
         echo "You will need to edit these files :"
@@ -203,22 +252,22 @@ while true; do
         case "$EDIT_METHOD" in
             n|N)
             packageChecker "nano" -y
-            nano $BIND_PATH/db.$FILE_NAME
-            nano $BIND_PATH/db.$PTR_FILE_NAME
-            nano $BIND_PATH/named.conf.local
-            nano $BIND_PATH/named.conf.options
+            nano /etc/bind/db.$FILE_NAME
+            nano /etc/bind/db.$PTR_FILE_NAME
+            nano /etc/bind/named.conf.local
+            nano /etc/bind/named.conf.options
             break 2;;
 
             v|V)
             packageChecker "vim" -y
-            vim $BIND_PATH/db.$FILE_NAME
-            vim $BIND_PATH/db.$PTR_FILE_NAME
-            vim $BIND_PATH/named.conf.local
-            vim $BIND_PATH/named.conf.options
+            vim /etc/bind/db.$FILE_NAME
+            vim /etc/bind/db.$PTR_FILE_NAME
+            vim /etc/bind/named.conf.local
+            vim /etc/bind/named.conf.options
             break;;
 
             s|S)
-            bindscriptconfig
+            BindScriptConfig
             break;;
 
             a|A)
@@ -253,7 +302,6 @@ done
 
 # Database (MariaDB)
 apt install mariadb-server
-mysql_secure_installation
 
 # Mail Server (Postfix and Dovecot)
 echo "Installing Postfix, Dovecot, and related packages..."
