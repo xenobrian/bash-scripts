@@ -9,18 +9,27 @@ if (( "$EUID" != 0 )); then
     exit
 fi
 
-read -rp "######### UNFINISHED SCRIPT #########\n\
-Do not execute this script in a deployment-ready server!\n\
-(P)roceed       (A)bort : " WARNING
-case "$WARNING" in
-    p|P)
-    echo "Note that you do this with your own decision!"
-    break;;
+echo "------------> UNFINISHED SCRIPT <------------"
+echo "Do not execute this script in a deployment-ready server!"
 
-    a|A)
-    echo "Exiting."
-    exit;;
-esac
+while true; do
+read -rp "(P)roceed          (A)bort : " WARNING
+  case "$WARNING" in
+      p|P)
+      echo "Note that you do this with your own decision!"
+      break
+      ;;
+
+      a|A)
+      echo "Exiting."
+      break
+      ;;
+
+      *)
+      echo "Not a valid option."
+      ;;
+  esac
+done
 
 echo -e "Main packages that will be installed :\nWeb Server\t: Apache2\nMail Server\t: Postfix, Dovecot (POP3 and IMAP), Roundcube\nDatabase\t: MariaDB Server, Phpmyadmin\nMonitoring\t: Cacti\nCMS\t\t: Wordpress"; sleep 1
 echo -e "Before installing, please make sure that this host is able to reach the internet. Ctrl+C to cancel in 5 seconds..."; sleep 5
@@ -28,8 +37,8 @@ echo "Starting installation!";
 
 # Repository update
 echo "Updating repositories..."
-apt update > /dev/null 2>&1; export pid=$!; wait $pid
-echo "Repositories has been updated. Now checking for necessary packages..."
+apt update ## > /dev/null 2>&1; export pid=$!; wait $pid
+echo "Repository cache has been updated. Now checking for necessary packages..."
 
 packageChecker () {
     local packagename="$1"
