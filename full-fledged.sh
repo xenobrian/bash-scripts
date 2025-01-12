@@ -63,7 +63,7 @@ cp $APACHE_VHOST_CONF_PATH/000-default.conf $APACHE_VHOST_CONF_PATH/template.con
 sed -i '22,28d' $APACHE_VHOST_CONF_PATH/template.conf
 sed -i '14,19d' $APACHE_VHOST_CONF_PATH/template.conf
 sed -i '2,8d' $APACHE_VHOST_CONF_PATH/template.conf
-        
+
 echo "Apache2 configuration section. Input carefully."
 while true; do
     while true; do
@@ -216,12 +216,24 @@ function BindScriptConfig() {
                 SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
                 break
             elif [[ $RECORD == "SRV" ]]; then
-                read -rp "What service is this intended for? [sip, xmpp, ldap] : " SERVICE
-                read -rp "Which protocol does this service use? [tcp/udp] : " PROTOCOL
-                read -rp "What is the TTL for this record? : " TTL
+                read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " SERVICE
+                SERVICE=${SERVICE:-sip}
+
+                read -rp "Which protocol does this service use? (tcp/udp)[udp] : " PROTOCOL
+                PROTOCOL=${PROTOCOL:-udp}
+
+                read -rp "What is the TTL for this record? [3600] : " TTL
+                TTL=${TTL:-3600}
+
                 read -rp "What is the priority? : " PRIORITY
+                PRIORITY=${PRIORITY:-1}
+
                 read -rp "What is the weight? : " WEIGHT
+                WEIGHT=${WEIGHT:-1}
+
                 read -rp "What is the port? : " PORT
+                PORT=${PORT:-5060}
+
                 SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY" "$SERVICE" "$PROTOCOL" "$TTL" "$WEIGHT" "$PORT"
                 break
             else
