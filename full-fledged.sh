@@ -174,47 +174,61 @@ function BindScriptConfig() {
         local ip="$4"
         local priority="$5"
 
+        ## Additional information needed for SRV records
+        local service="$6"
+        local protocol="$7"
+        local ttl="$8"
+        local weight="$9"
+        local port="${10}"
+
+        if [[ $record != "MX"]] && [[ $record != "SRV" ]]
+            echo -e "$subdomain\tIN\t$record\t$ip" >> /etc/bind/db.$FILE_NAME
+        fi
+
         if [[ $record == "MX" ]]; then
             echo -e "$root_domain.\tIN\tMX\t$priority\t$subdomain.$root_domain." >> /etc/bind/db.$FILE_NAME
         fi
 
         if [[ $record == "SRV" ]]; then
-            echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN SRV $priority $weight $port\t$subdomain."
+            echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN\tSRV\t$priority $weight $port\t$subdomain.$root_domain."
         fi
+        }
 
-        echo -e "$subdomain\tIN\t$record\t$ip" >> /etc/bind/db.$FILE_NAME
-    }
-
-    read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
-    read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
-    ZoneFileEdit "$FILE_NAME" "$BIND_DOM_NAME"
-
-    while true; do
-        read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
-        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
+        read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
+        read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
 
         while true; do
-            read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
-            SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
-            if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-                echo "Invalid IP address format. Please try again."
+            read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
+            read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
+
+            while true; do
+                read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
+                SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
+                if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                    echo "Invalid IP address format. Please try again."I
+                else
+                    break
+                fi
+            done
+
+            if [[ $RECORD == "MX" ]]; then
+                read -rp "What is the priority? [0-65535] : " PRIORITY
+                SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
+                break
+            elif [[ $RECORD == "SRV" ]]; then
+                read -rp "What service is this intended for? [sip, xmpp, ldap] : " SERVICE
+                read -rp "Which protocol does this service use? [tcp/udp] : " PROTOCOL
+                read -rp "What is the TTL for this record? : " TTL
+                read -rp "What is the priority? : " PRIORITY
+                read -rp "What is the weight? : " WEIGHT
+                read -rp "What is the port? : " PORT
+                SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY" "$SERVICE" "$PROTOCOL" "$TTL" "$WEIGHT" "$PORT"
+                break
             else
+                SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
                 break
             fi
         done
-
-        if [[ $RECORD == "MX "]]; then
-            read -rp "What is the priority? [0-65535] : " PRIORITY
-        elif [[ $RECORD == "SRV" ]]; then
-            read -rp "What service is this intended for? [sip, xmpp, ldap] : " SERVICE
-            read -rp "Which protocol does this service use? [tcp/udp] : " PROTOCOL
-            read -rp "What is the TTL for this record? : " TTL
-            read -rp "What is the priority? : " PRIORITY
-            read -rp "What is the weight? : " WEIGHT
-            read -rp "What is the port? : " PORT
-        fi
-
-        SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
 
         while true; do
             read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
