@@ -141,7 +141,6 @@ function PTRFileConfig {
 }
 
 function BindScriptConfig() {
-
     function FileCreate {
         local zone_filename="$1"
         local ptr_filename="$2"
@@ -181,7 +180,7 @@ function BindScriptConfig() {
         local weight="$9"
         local port="${10}"
 
-        if [[ $record != "MX"]] && [[ $record != "SRV" ]]
+        if [[ $record != "MX" ]] && [[ $record != "SRV" ]]; then
             echo -e "$subdomain\tIN\t$record\t$ip" >> /etc/bind/db.$FILE_NAME
         fi
 
@@ -192,74 +191,73 @@ function BindScriptConfig() {
         if [[ $record == "SRV" ]]; then
             echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN\tSRV\t$priority $weight $port\t$subdomain.$root_domain."
         fi
-        }
+    }
 
-        read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
-        read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
+    read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
+    read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
+
+    while true; do
+        read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
+        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
 
         while true; do
-            read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
-            read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
-
-            while true; do
-                read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
-                SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
-                if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-                    echo "Invalid IP address format. Please try again."I
-                else
-                    break
-                fi
-            done
-
-            if [[ $RECORD == "MX" ]]; then
-                read -rp "What is the priority? [0-65535] : " PRIORITY
-                SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
-                break
-            elif [[ $RECORD == "SRV" ]]; then
-                read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " SERVICE
-                SERVICE=${SERVICE:-sip}
-
-                read -rp "Which protocol does this service use? (tcp/udp)[udp] : " PROTOCOL
-                PROTOCOL=${PROTOCOL:-udp}
-
-                read -rp "What is the TTL for this record? [3600] : " TTL
-                TTL=${TTL:-3600}
-
-                read -rp "What is the priority? : " PRIORITY
-                PRIORITY=${PRIORITY:-1}
-
-                read -rp "What is the weight? : " WEIGHT
-                WEIGHT=${WEIGHT:-1}
-
-                read -rp "What is the port? : " PORT
-                PORT=${PORT:-5060}
-
-                SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY" "$SERVICE" "$PROTOCOL" "$TTL" "$WEIGHT" "$PORT"
-                break
+            read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
+            SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
+            if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                echo "Invalid IP address format. Please try again."I
             else
-                SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
                 break
             fi
         done
 
-        while true; do
-            read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
-            case "$SUBDOMAIN_RECREATE_DECISION" in
-                y|Y)
-                break
-                ;;
+        if [[ $RECORD == "MX" ]]; then
+            read -rp "What is the priority? [0-65535] : " PRIORITY
+            SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
+            break
+        elif [[ $RECORD == "SRV" ]]; then
+            read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " SERVICE
+            SERVICE=${SERVICE:-sip}
 
-                n|N)
-                break 2
-                ;;
+            read -rp "Which protocol does this service use? (tcp/udp)[udp] : " PROTOCOL
+            PROTOCOL=${PROTOCOL:-udp}
 
-                *)
-                echo "Not valid."
-                ;;
-            esac
-        done
+            read -rp "What is the TTL for this record? [3600] : " TTL
+            TTL=${TTL:-3600}
+
+            read -rp "What is the priority? : " PRIORITY
+            PRIORITY=${PRIORITY:-1}
+
+            read -rp "What is the weight? : " WEIGHT
+            WEIGHT=${WEIGHT:-1}
+
+            read -rp "What is the port? : " PORT
+            PORT=${PORT:-5060}
+
+            SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY" "$SERVICE" "$PROTOCOL" "$TTL" "$WEIGHT" "$PORT"
+            break
+        else
+            SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
+            break
+        fi
     done
 
+    while true; do
+        read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
+        case "$SUBDOMAIN_RECREATE_DECISION" in
+            y|Y)
+            BindScriptConfig
+            break
+            ;;
+
+            n|N)
+            break 2
+            ;;
+
+            *)
+            echo "Not valid."
+            ;;
+        esac
+    done
 }
 
 while true; do
@@ -308,10 +306,12 @@ while true; do
         read -rp "Create another file? [y/N] : " CREATE
         case "$CREATE" in
             y|Y)
-            break;;
+            break
+            ;;
 
             n|N)
-            break 2;;
+            break 2
+            ;;
 
             *)
             echo "Not a valid answer."
@@ -322,7 +322,7 @@ done
 systemctl restart bind9 && systemctl status bind9
 
 # PHP
-for pkgs in php php-mysql php-snmp php-xml php-mbstring php-json php-gd php-gmp php-zip php-ldap php-mc php-curl php-dom php-simplexml; do
+for pkgs in php php-mysql php-snmp php-xml php-mbstring php-json php-gd php-gmp php-zip php-ldap php-curl php-dom php-simplexml; do
     apt install $pkgs -y
 done
 
@@ -385,6 +385,11 @@ while true; do
 done
 
 # Cacti
-for pkgs in rrdtool mariadb-client snmp snmpd cacti; do
+for pkgs in rrdtool mariadb-client snmp snmpd; do
     apt install $pkgs -y
 done
+
+## Remote login must be enabled
+mysql_secure_installation
+
+apt install cacti -y
