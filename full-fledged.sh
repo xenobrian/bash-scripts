@@ -133,13 +133,6 @@ echo "Will install and configure Bind9..."
 apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
-
-
-function PTRFileConfig {
-    local
-
-}
-
 function BindScriptConfig() {
     function FileCreate {
         local zone_filename="$1"
@@ -160,10 +153,13 @@ function BindScriptConfig() {
     function PointerFileEdit {
         local filename="$1"
         local domain_name="$2"
+        local ip_host="$3"
 
         sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename /etc/bind/db.$filename
         sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename /etc/bind/db.$filename
         sed -e "s/localhost/$domain_name/" -e "s/.localhost/.$filename/" /etc/bind/db.$filename
+
+        echo > /etc/
     }
 
     function SubdomainCreate {
@@ -197,7 +193,7 @@ function BindScriptConfig() {
     read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
 
     while true; do
-        read -rp "What subdomain would you like to create? [ns1/www/ftp/other] : " SUBDOMAIN
+        read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
         read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
 
         while true; do
@@ -224,13 +220,13 @@ function BindScriptConfig() {
             read -rp "What is the TTL for this record? [3600] : " TTL
             TTL=${TTL:-3600}
 
-            read -rp "What is the priority? : " PRIORITY
+            read -rp "What is the priority? [1] : " PRIORITY
             PRIORITY=${PRIORITY:-1}
 
-            read -rp "What is the weight? : " WEIGHT
+            read -rp "What is the weight? [1] : " WEIGHT
             WEIGHT=${WEIGHT:-1}
 
-            read -rp "What is the port? : " PORT
+            read -rp "What is the port? [5060] : " PORT
             PORT=${PORT:-5060}
 
             SubdomainCreate "$BIND_DOM_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY" "$SERVICE" "$PROTOCOL" "$TTL" "$WEIGHT" "$PORT"
