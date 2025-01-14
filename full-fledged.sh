@@ -161,8 +161,8 @@ function BindScriptConfig() {
         local filename="$1"
         local domain_name="$2"
 
-        sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename
-        sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename
+        sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename /etc/bind/db.$filename
+        sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename /etc/bind/db.$filename
         sed -e "s/localhost/$domain_name/" -e "s/.localhost/.$filename/" /etc/bind/db.$filename
     }
 
@@ -181,15 +181,15 @@ function BindScriptConfig() {
         local port="${10}"
 
         if [[ $record != "MX" ]] && [[ $record != "SRV" ]]; then
-            echo -e "$subdomain\tIN\t$record\t$ip" >> /etc/bind/db.$FILE_NAME
+            echo -e "$subdomain\tIN\t$record\t$ip" | tee /etc/bind/db.$FILE_NAME
         fi
 
         if [[ $record == "MX" ]]; then
-            echo -e "$root_domain.\tIN\tMX\t$priority\t$subdomain.$root_domain." >> /etc/bind/db.$FILE_NAME
+            echo -e "$root_domain.\tIN\tMX\t$priority\t$subdomain.$root_domain." | tee /etc/bind/db.$FILE_NAME
         fi
 
         if [[ $record == "SRV" ]]; then
-            echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN\tSRV\t$priority $weight $port\t$subdomain.$root_domain."
+            echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN\tSRV\t$priority $weight $port\t$subdomain.$root_domain." | tee /etc/bind/db.$FILE_NAME
         fi
     }
 
@@ -204,7 +204,7 @@ function BindScriptConfig() {
             read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
             SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
             if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-                echo "Invalid IP address format. Please try again."I
+                echo "Invalid IP address format. Please try again."
             else
                 break
             fi
@@ -327,7 +327,8 @@ for pkgs in php php-mysql php-snmp php-xml php-mbstring php-json php-gd php-gmp 
 done
 
 # Database (MariaDB)
-apt install mariadb-server
+apt install mariadb-server mariadb-client
+mysql_secure_installation ## Remote login option must be allowed
 
 # Mail Server (Postfix and Dovecot)
 echo "Installing Postfix, Dovecot, and related packages..."
@@ -359,7 +360,7 @@ while true; do
         MAILSERV_DOM=${MAILSERV_DOM:-mail.example.net}
 
         read -rp "SMTP server domain name [example.net] : " SMTP_DOM
-        MAILSERV_DOM=${MAILSERV_DOM:-example.net}
+        SMTP_MAILSERV_DOM=${MAILSERV_DOM:-example.net}
 
         sed -i "s/$config['smtp_port'] = 587/$config['smtp_port'] = 25/" /etc/roundcube/config.inc.php
         sed -i "s/$config['smtp_user'] = '%u';/$config['smtp_user'] = '';/" /etc/roundcube/config.inc.php
@@ -388,8 +389,5 @@ done
 for pkgs in rrdtool mariadb-client snmp snmpd; do
     apt install $pkgs -y
 done
-
-## Remote login must be enabled
-mysql_secure_installation
 
 apt install cacti -y
