@@ -330,7 +330,7 @@ mysql_secure_installation ## Remote login option must be allowed
 echo "Installing Postfix, Dovecot, and related packages..."
 apt install postfix dovecot-imapd dovecot-pop3d -y
 
-PATH=/etc/dovecot/conf.d
+DOVECOT_PATH=/etc/dovecot/conf.d
 
 sed -i 's/home_mailbox = Maildir/#home_mailbox = Maildir/' /etc/postfix/main.cf
 maildirmake.dovecot /etc/skel/Maildir
@@ -338,9 +338,9 @@ dpkg-reconfigure postfix
 systemctl restart postfix
 
 sed -i 's/# listen = */listen = */' /etc/dovecot/dovecot.conf
-sed -i 's/# disable_plaintext_auth = yes/disable_plaintext_auth = no/' $PATH/10-auth.conf
-sed -i 's/# mail_location = maildir:~/Maildir/mail_location = maildir:~/Maildir/' $PATH/10-mail.conf
-sed -i 's|mail_location = mbox:~/mail:INBOX=/var/mail/%u|# mail_location = mbox:~/mail:INBOX=/var/mail/%u|' $PATH/10-mail.conf
+sed -i 's/# disable_plaintext_auth = yes/disable_plaintext_auth = no/' $DOVECOT_PATH/10-auth.conf
+sed -i 's/# mail_location = maildir:~/Maildir/mail_location = maildir:~/Maildir/' $DOVECOT_PATH/10-mail.conf
+sed -i 's|mail_location = mbox:~/mail:INBOX=/var/mail/%u|# mail_location = mbox:~/mail:INBOX=/var/mail/%u|' $DOVECOT_PATH/10-mail.conf
 systemctl restart dovecot
 
 # echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
