@@ -134,13 +134,6 @@ apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
 function BindScriptConfig() {
-    function FileCreate {
-        local zone_filename="$1"
-        local ptr_filename="$2"
-        cp /etc/bind/db.local /etc/bind/db.$zone_filename
-        cp /etc/bind/db.127 /etc/bind/db.$ptr_filename
-    }
-
     function ZoneFileEdit {
         local filename="$1"
         local domain_name="$2"
@@ -191,6 +184,8 @@ function BindScriptConfig() {
 
     read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
     read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
+
+    cp /etc/bind/db.127 /etc/bind/db.$FILE_NAME
 
     while true; do
         read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
@@ -259,7 +254,9 @@ function BindScriptConfig() {
 while true; do
     read -rp "Input the name for zone file. db.((name)) : " FILE_NAME
     read -rp "Input the name for PTR record file. db.((number)) : " PTR_FILE_NAME
-    FileCreate "$FILE_NAME" "$PTR_FILE_NAME"
+
+    cp /etc/bind/db.local /etc/bind/db.$FILE_NAME
+    cp /etc/bind/db.127 /etc/bind/db.$PTR_FILE_NAME
 
     while true; do
         echo "You will need to edit these files :"
