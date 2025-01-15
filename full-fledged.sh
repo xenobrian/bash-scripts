@@ -50,7 +50,7 @@ packageChecker () {
     fi
 }
 
-for x in net-tools sed wget unzip curl; do
+for x in net-tools sed wget unzip curl awk; do
     packageChecker "$x" -y
 done
 
@@ -67,16 +67,22 @@ sed -i '2,8d' $APACHE_VHOST_CONF_PATH/template.conf
 echo "Apache2 configuration section. Input carefully."
 while true; do
     while true; do
-        read -rp "What domain name would you like to use?(use FQDN)[www.example.org] : " DOMAIN_NAME
-        DOMAIN_NAME=${DOMAIN_NAME:-www.example.com}
+        read -rp "What is the name for the vhost config file? [web.conf] : " VHOST_FILENAME
+        VHOST_FILENAME=${VHOST_FILENAME:-web.conf}
+        cp $APACHE_VHOST_CONF_PATH/template.conf $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
 
-        cp $APACHE_VHOST_CONF_PATH/template.conf $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME.conf
-        sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME.conf
+        read -rp "What domain name would you like to point the vhost to? [example.com] : " DOMAIN_NAME
+        DOMAIN_NAME=${DOMAIN_NAME:-example.com}
+
+        read -rp "Set up an alias (ServerAlias directive)? Empty for none : " ALIAS_NAME
+        awk '/ServerName/ { print; print "ServerAlias $ALIAS_NAME"; next }1' $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME
+
+        sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
 
         echo "Make sure that your website directory exists."
         read -rp "Specify the path of this website's directory [/var/www/html] : " ROOT_WEBDIR
         ROOT_WEBDIR=${ROOT_WEBDIR:-/var/www/html}
-        sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME.conf
+        sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
 
         echo "Since you are root, the user:group of the $ROOT_WEBDIR is probably root:root."
         while true; do
@@ -99,7 +105,7 @@ while true; do
             read -rp "Enable the website now? [y/N] : " ENABLE_WEB_DECISION
             case "$ENABLE_WEB_DECISION" in
                 y|Y)
-                a2ensite $DOMAIN_NAME
+                a2ensite $VHOST_FILENAME
                 break;;
 
                 n|N)
@@ -184,8 +190,6 @@ function BindScriptConfig() {
 
     read -rp "What is the name the zone file [db.((name))] : " FILE_NAME
     read -rp "Replace 'localhost' in db.$FILE_NAME with your own domain [example.net] : " BIND_DOM_NAME
-
-    cp /etc/bind/db.127 /etc/bind/db.$FILE_NAME
 
     while true; do
         read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
