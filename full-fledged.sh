@@ -68,21 +68,29 @@ echo "Apache2 configuration section. Input carefully."
 while true; do
     while true; do
         read -rp "What is the name for the vhost config file? [web.conf] : " VHOST_FILENAME
-        VHOST_FILENAME=${VHOST_FILENAME:-web.conf}
-        cp $APACHE_VHOST_CONF_PATH/template.conf $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
-
         read -rp "What domain name would you like to point the vhost to? [example.com] : " DOMAIN_NAME
-        DOMAIN_NAME=${DOMAIN_NAME:-example.com}
-
         read -rp "Set up an alias (ServerAlias directive)? Empty for none : " ALIAS_NAME
-        awk '/ServerName/ { print; print "ServerAlias $ALIAS_NAME"; next }1' $APACHE_VHOST_CONF_PATH/$DOMAIN_NAME
+        read -rp "Specify the path of this website's directory [/var/www/html] : " ROOT_WEBDIR
 
+        VHOST_FILENAME=${VHOST_FILENAME:-web.conf}
+        DOMAIN_NAME=${DOMAIN_NAME:-example.com}
+        if [[ -z $ROOT_WEBDIR ]]; then
+            $ROOT_WEBDIR="var/www/html"
+        fi
+
+        cp $APACHE_VHOST_CONF_PATH/template.conf $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
         sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
 
-        echo "Make sure that your website directory exists."
-        read -rp "Specify the path of this website's directory [/var/www/html] : " ROOT_WEBDIR
-        ROOT_WEBDIR=${ROOT_WEBDIR:-/var/www/html}
-        sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
+        if [[ -n $ALIAS_NAME ]]; then
+            awk '/ServerName/ { print; print "ServerAlias $ALIAS_NAME"; next }1' $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
+        fi
+
+        if [[ -d $ROOT_WEBDIR ]]; then
+            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
+        else
+            mkdir -p $ROOT_WEBDIR
+            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
+        fi
 
         echo "Since you are root, the user:group of the $ROOT_WEBDIR is probably root:root."
         while true; do
