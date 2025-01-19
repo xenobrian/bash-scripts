@@ -57,12 +57,12 @@ done
 # Apache2 install and configuration
 echo "Installing necessary packages..."
 apt install apache2 libapache2-mod-php -y ## > /dev/null 2>&1
-APACHE_VHOST_CONF_PATH=/etc/apache2/sites-available
+CONF_PATH=/etc/apache2/sites-available
 
-cp $APACHE_VHOST_CONF_PATH/000-default.conf $APACHE_VHOST_CONF_PATH/template.conf
-sed -i '22,28d' $APACHE_VHOST_CONF_PATH/template.conf
-sed -i '14,19d' $APACHE_VHOST_CONF_PATH/template.conf
-sed -i '2,8d' $APACHE_VHOST_CONF_PATH/template.conf
+cp $CONF_PATH/000-default.conf $CONF_PATH/template.conf
+sed -i '22,28d' $CONF_PATH/template.conf
+sed -i '14,19d' $CONF_PATH/template.conf
+sed -i '2,8d' $CONF_PATH/template.conf
 
 echo "Apache2 configuration section. Input carefully."
 while true; do
@@ -75,21 +75,24 @@ while true; do
         VHOST_FILENAME=${VHOST_FILENAME:-web.conf}
         DOMAIN_NAME=${DOMAIN_NAME:-example.com}
         if [[ -z $ROOT_WEBDIR ]]; then
-            $ROOT_WEBDIR="var/www/html"
+            ROOT_WEBDIR="/var/www/html"
         fi
 
-        cp $APACHE_VHOST_CONF_PATH/template.conf $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
-        sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
-
-        if [[ -n $ALIAS_NAME ]]; then
-            awk '/ServerName/ { print; print "ServerAlias $ALIAS_NAME"; next }1' $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
-        fi
+        cp $CONF_PATH/template.conf $CONF_PATH/$VHOST_FILENAME
+        sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $CONF_PATH/$VHOST_FILENAME
 
         if [[ -d $ROOT_WEBDIR ]]; then
-            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
+            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $CONF_PATH/$VHOST_FILENAME
         else
             mkdir -p $ROOT_WEBDIR
-            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $APACHE_VHOST_CONF_PATH/$VHOST_FILENAME
+            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $CONF_PATH/$VHOST_FILENAME
+        fi
+
+        if [[ -n $ALIAS_NAME ]]; then
+            TMPFILE=$(mktemp /tmp/apache2-config-XXX.tmp)
+            awk "/ServerName/ { print; print \"\tServerAlias $ALIAS_NAME\"; next }1" $CONF_PATH/$VHOST_FILENAME > $TMPFILE
+            cat $TMPFILE | tee $CONF_PATH/$VHOST_FILENAME
+            rm $TMPFILE
         fi
 
         echo "Since you are root, the user:group of the $ROOT_WEBDIR is probably root:root."
