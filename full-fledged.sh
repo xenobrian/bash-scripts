@@ -150,111 +150,92 @@ echo "Will install and configure Bind9..."
 apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
-
-function ZoneFileEdit {
-    local filename="$1"
-    local domain_name="$2"
-
-    sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename
-    sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename
-    cat /etc/bind/db.$filename
-}
-
-function PointerFileEdit {
-    local filename="$1"
-    local domain_name="$2"
-    local ip_host="$3"
-
-    sed -i "s/localhost/$domain_name/" /etc/bind/db.$filename /etc/bind/db.$filename
-    sed -i "s/.localhost/.$domain_name/" /etc/bind/db.$filename /etc/bind/db.$filename
-    sed -e "s/localhost/$domain_name/" -e "s/.localhost/.$filename/" /etc/bind/db.$filename
-}
-
-function SubdomainCreate {
-    local root_domain="$1"
-    local subdomain="$2"
-    local record="$3"
-    local ip="$4"
-    local priority="$5"
-
-    ## Additional information needed for SRV records
-    local service="$6"
-    local protocol="$7"
-    local ttl="$8"
-    local weight="$9"
-    local port="${10}"
-
-    if [[ $record != "MX" ]] && [[ $record != "SRV" ]]; then
-        echo -e "$subdomain\tIN\t$record\t$ip"
-        echo -e "$subdomain\tIN\t$record\t$ip" >> /etc/bind/db.$FILE_NAME
-    fi
-
-    if [[ $record == "CNAME" ]]; then
-        echo -e "$subdomain.$root_domain\tIN\tCNAME\t$target"
-        echo -e "$subdomain.$root_domain\tIN\tCNAME\t$target" >> /etc/bind/db.$FILE_NAME
-    fi
-
-    if [[ $record == "MX" ]]; then
-        echo -e "$root_domain.\tIN\tMX\t$priority\t$subdomain.$root_domain."
-        echo -e "$root_domain.\tIN\tMX\t$priority\t$subdomain.$root_domain." >> /etc/bind/db.$FILE_NAME
-    fi
-
-    if [[ $record == "SRV" ]]; then
-        echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN\tSRV\t$priority $weight $port\t$subdomain.$root_domain."
-        echo -e "_$service._$protocol.$root_domain.\t$ttl\tIN\tSRV\t$priority $weight $port\t$subdomain.$root_domain." >> /etc/bind/db.$FILE_NAME
-    fi
-}
-
 function BindScriptConfig() {
-    read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " BIND_TLD_NAME
+    read -rp "Input the name for zone file : " FILE_NAME
+    read -rp "Input the name for PTR record file  : " PTR_FILE_NAME
+
+    if [ ! -f /etc/bind/$FILE_NAME ] && [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
+        read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " TLD
+    fi
+
+    if [ ! -f /etc/bind/$FILE_NAME ]; then
+        read -rp "Current chosen top-level domain is $TLD, you can still change it now should you want to [another.net] : " TLD
+        cp /etc/bind/db.local /etc/bind/$FILE_NAME
+
+        sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
+        sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
+        sed -i "/127.0.0.1$/d" /etc/bind/$FILE_NAME
+
+        # Reinsert zone file option that got deleted by previous sed commands
+        sed -i "/::1$/d" /etc/bind/$FILE_NAME
+        echo -e "@\tIN\tA\t$TLD" >> /etc/bind/$FILE_NAME
+    fi
+
+    if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
+        cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
+
+        sed -i "s/localhost/$TLD/" /etc/bind/$PTR_FILE_NAME
+        sed -i "s/.localhost/.$TLD/" /etc/bind/$PTR_FILE_NAME
+
+        sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
+    fi
 
     while true; do
-        read -rp "Will create a zone file, what is the name? [db.((name))] : " FILE_NAME
+        read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
+        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
 
-        while true; do
-            read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
-            read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
-
+        if [[ $RECORD == "A" ]] || [[ $RECORD == "AAAA" ]] || [[ $RECORD == "NS" ]]; then
             while true; do
-                read -rp "To what IP it belongs to? [192.168.0.3] : " SUBDOMAIN_IP
-                SUBDOMAIN_IP=${SUBDOMAIN_IP:-192.168.0.3}
-                if [[ ! $SUBDOMAIN_IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                read -rp "To what IP it belongs to? [192.168.0.3] : " IP
+                IP=${IP:-192.168.0.3}
+                HOST_IP=$(echo $IP | awk -F. '{print $4}')
+
+                if [[ ! $IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
                     echo "Invalid IP address format. Please try again."
                 else
                     break
                 fi
             done
+        fi
 
-            if [[ $RECORD == "MX" ]]; then
-                read -rp "What is the priority? [0-65535] : " PRIORITY
-                SubdomainCreate "$BIND_TLD_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY"
-                break
-            elif [[ $RECORD == "SRV" ]]; then
-                read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " SERVICE
-                SERVICE=${SERVICE:-sip}
+        case "$RECORD" in
+            "A"|"AAAA"|"NS")
+            echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP"
+            echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP" >> /etc/bind/$FILE_NAME
+            echo -e "$HOST_IP\tIN\tPTR\t$SUBDOMAIN.$TLD." >> /etc/bind/$PTR_FILE_NAME
+            ;;
 
-                read -rp "Which protocol does this service use? (tcp/udp)[udp] : " PROTOCOL
-                PROTOCOL=${PROTOCOL:-udp}
+            "MX")
+            read -rp "What is the priority? [0-65535] : " PRIORITY
+            echo -e "$TLD.\tIN\tMX\t$PRIORITY\t$SUBDOMAIN.$TLD."
+            echo -e "$TLD.\tIN\tMX\t$PRIORITY\t$SUBDOMAIN.$TLD." >> /etc/bind/$FILE_NAME
+            ;;
 
-                read -rp "What is the TTL for this record? [3600] : " TTL
-                TTL=${TTL:-3600}
+            "SRV")
+            read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " service
+            read -rp "Which protocol does this service use? (tcp/udp)[udp] : " protocol
+            read -rp "What is the TTL for this record in seconds? [3600] : " ttl
+            read -rp "What is the priority? [1] : " priority
+            read -rp "What is the weight? [1] : " weight
+            read -rp "What is the port? [5060] : " port
 
-                read -rp "What is the priority? [1] : " PRIORITY
-                PRIORITY=${PRIORITY:-1}
+            service=${service:-sip}
+            protocol=${protocol:-udp}
+            ttl=${ttl:-3600}
+            priority=${priority:-1}
+            weight=${weight:-1}
+            port=${port:-5060}
 
-                read -rp "What is the weight? [1] : " WEIGHT
-                WEIGHT=${WEIGHT:-1}
+            echo -e "_$service._$protocol.$TLD.\t$ttl\tIN\tSRV\t$priority $weight $port\t$SUBDOMAIN.$TLD."
+            echo -e "_$service._$protocol.$TLD.\t$ttl\tIN\tSRV\t$priority $weight $port\t$SUBDOMAIN.$TLD." >> /etc/bind/$FILE_NAME
+            ;;
 
-                read -rp "What is the port? [5060] : " PORT
-                PORT=${PORT:-5060}
-
-                SubdomainCreate "$BIND_TLD_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP" "$PRIORITY" "$SERVICE" "$PROTOCOL" "$TTL" "$WEIGHT" "$PORT"
-                break
-            else
-                SubdomainCreate "$BIND_TLD_NAME" "$SUBDOMAIN" "$RECORD" "$SUBDOMAIN_IP"
-                break
-            fi
-        done
+            "CNAME")
+            read -rp "What domain should this CNAME record points to : " target
+            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target"
+            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target" >> /etc/bind/$FILE_NAME
+            ;;
+        esac
 
         while true; do
             read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
@@ -274,14 +255,56 @@ function BindScriptConfig() {
         done
     done
 
-    ZoneFileEdit "$BIND_TLD_NAME" "$FILE_NAME"
+    SET_CONF_STATE="finished"
 }
 
+
 while true; do
-    read -rp "Edit another zone file? : " ZONE_FILE_EDIT_DECISION
+    echo "You will need to edit these files :"
+    echo -e "- The zone file (db.$FILE_NAME)\n\
+    - PTR records file (db.$PTR_FILE_NAME)\n\
+    - Local DNS server configuration file (named.conf.local)\n\
+    - Bind9 settings (named.conf.options)\n\
+    Choose which tool to use : "
+    read -rp "(N)ano       (V)im       (S)cript       (A)bort: " EDIT_METHOD
+    case "$EDIT_METHOD" in
+        n|N)
+        packageChecker "nano" -y
+        nano /etc/bind/$FILE_NAME
+        nano /etc/bind/$PTR_FILE_NAME
+        nano /etc/bind/named.conf.local
+        nano /etc/bind/named.conf.options
+        break
+        ;;
+
+        v|V)
+        packageChecker "vim" -y
+        vim /etc/bind/$FILE_NAME
+        vim /etc/bind/$PTR_FILE_NAME
+        vim /etc/bind/named.conf.local
+        vim /etc/bind/named.conf.options
+        break
+        ;;
+
+        s|S)
+        BindScriptConfig
+        break
+        ;;
+
+        a|A)
+        break
+        ;;
+
+        *)
+        echo "Not a valid answer."
+    esac
+done
+
+while true; do
+    read -rp "Create and edit another zone file? : " ZONE_FILE_EDIT_DECISION
     case "$ZONE_FILE_EDIT_DECISION" in
         y|Y)
-        BindScriptConfig()
+        BindScriptConfig
         ;;
 
         n|N)
@@ -293,52 +316,6 @@ while true; do
         echo "Not valid"
         ;;
     esac
-done
-
-
-while true; do
-    read -rp "Input the name for zone file. db.((name)) : " FILE_NAME
-    read -rp "Input the name for PTR record file. db.((number)) : " PTR_FILE_NAME
-
-    cp /etc/bind/db.local /etc/bind/db.$FILE_NAME
-    cp /etc/bind/db.127 /etc/bind/db.$PTR_FILE_NAME
-
-    while true; do
-        echo "You will need to edit these files :"
-        echo -e "- The zone file (db.$FILE_NAME)\n\
-        - PTR records file (db.$PTR_FILE_NAME)\n\
-        - Local DNS server configuration file (named.conf.local)\n\
-        - Bind9 settings (named.conf.options)\n\
-        Choose which tool to use : "
-        read -rp "(N)ano       (V)im       (S)cript       (A)bort: " EDIT_METHOD
-        case "$EDIT_METHOD" in
-            n|N)
-            packageChecker "nano" -y
-            nano /etc/bind/db.$FILE_NAME
-            nano /etc/bind/db.$PTR_FILE_NAME
-            nano /etc/bind/named.conf.local
-            nano /etc/bind/named.conf.options
-            break 2;;
-
-            v|V)
-            packageChecker "vim" -y
-            vim /etc/bind/db.$FILE_NAME
-            vim /etc/bind/db.$PTR_FILE_NAME
-            vim /etc/bind/named.conf.local
-            vim /etc/bind/named.conf.options
-            break;;
-
-            s|S)
-            BindScriptConfig
-            break;;
-
-            a|A)
-            break;;
-
-            *)
-            echo "Not a valid answer."
-        esac
-    done
 done
 
 systemctl restart bind9 && systemctl status bind9
