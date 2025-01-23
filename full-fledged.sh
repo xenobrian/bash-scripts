@@ -151,33 +151,15 @@ apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
 function BindScriptConfig() {
-    read -rp "Input the name for zone file : " FILE_NAME
-    read -rp "Input the name for PTR record file  : " PTR_FILE_NAME
-
-    if [ ! -f /etc/bind/$FILE_NAME ] && [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
-        read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " TLD
-    fi
+    read -rp "Input the name for forward zone file : " FILE_NAME
+    read -rp "Input the name for reverse zone file : " PTR_FILE_NAME
 
     if [ ! -f /etc/bind/$FILE_NAME ]; then
-        read -rp "Current chosen top-level domain is $TLD, you can still change it now should you want to [another.net] : " TLD
-        cp /etc/bind/db.local /etc/bind/$FILE_NAME
-
-        sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
-        sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
-        sed -i "/127.0.0.1$/d" /etc/bind/$FILE_NAME
-
-        # Reinsert zone file option that got deleted by previous sed commands
-        sed -i "/::1$/d" /etc/bind/$FILE_NAME
-        echo -e "@\tIN\tA\t$TLD" >> /etc/bind/$FILE_NAME
+        TLD=''
     fi
 
-    if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
-        cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
-
-        sed -i "s/localhost/$TLD/" /etc/bind/$PTR_FILE_NAME
-        sed -i "s/.localhost/.$TLD/" /etc/bind/$PTR_FILE_NAME
-
-        sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
+    if [[ -z $TLD ]] && [ ! -f /etc/bind/$FILE_NAME ]; then
+        read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " TLD
     fi
 
     while true; do
@@ -196,6 +178,31 @@ function BindScriptConfig() {
                     break
                 fi
             done
+        fi
+
+        if [ ! -f /etc/bind/$FILE_NAME ]; then
+            cp /etc/bind/db.local /etc/bind/$FILE_NAME
+
+            sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
+            sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
+            sed -i "/127.0.0.1$/d" /etc/bind/$FILE_NAME
+
+            # Reinsert zone file option that got deleted by previous sed commands
+            sed -i "/::1$/d" /etc/bind/$FILE_NAME
+            echo -e "@\tIN\tA\t$TLD." >> /etc/bind/$FILE_NAME
+        fi
+
+        if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
+            cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
+
+            sed -i "s/localhost/$TLD/" /etc/bind/$PTR_FILE_NAME
+            sed -i "s/.localhost/.$TLD/" /etc/bind/$PTR_FILE_NAME
+
+            sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
+        fi
+
+        if [ -f /etc/bind/$PTR_FILE_NAME ]; then
+            echo -e "$HOST_IP\tIN\tPTR\t$TLD." >> /etc/bind/$PTR_FILE_NAME
         fi
 
         case "$RECORD" in
@@ -232,8 +239,8 @@ function BindScriptConfig() {
 
             "CNAME")
             read -rp "What domain should this CNAME record points to : " target
-            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target"
-            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target" >> /etc/bind/$FILE_NAME
+            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target."
+            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target." >> /etc/bind/$FILE_NAME
             ;;
         esac
 
@@ -333,18 +340,23 @@ mysql_secure_installation ## Remote login option must be allowed
 echo "Installing Postfix, Dovecot, and related packages..."
 apt install postfix dovecot-imapd dovecot-pop3d -y
 
-DOVECOT_PATH=/etc/dovecot/conf.d
+read -rp "Hostname of this mail server [example.net] : " POSTFIX_HOST
+cp /etc/postfix/main.cf /etc/postfix/main.cf.bak
+sed -i "s/^myhostname = .*/myhostname = $(printf '%s' "$POSTFIX_HOST" | sed 's/[&/\]/\\&/g')/" /etc/postfix/main.cf
+sed -i "s/mynetworks: 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128/mynetworks: 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 0.0.0.0/0/" /etc/postfix/main.cf
+sed -i "s/inet_interfaces = loopback-only/inet_interfaces = all/" /etc/postfix/main.cf
+sed -i 's/default_transport = error/default_transport = smtp/' /etc/postfix/main.cf
+sed -i 's/relay_transport = error/relay_transport = smtp/' /etc/postfix/main.cf
 
-sed -i 's/home_mailbox = Maildir/#home_mailbox = Maildir/' /etc/postfix/main.cf
+echo "inet_protocols = ipv4" >> /etc/postfix/main.cf
+echo "home_mailbox = Maildir" >> /etc/postfix/main.cf
+
+sed -i 's/#listen = \*, ::/listen = */' /etc/dovecot/dovecot.conf
+sed -i 's/#disable_plaintext_auth = yes/disable_plaintext_auth = no/' /etc/dovecot/conf.d/10-auth.conf
+sed -i 's|mail_location = mbox:~/mail:INBOX=/var/mail/%u|mail_location = maildir:~/Maildir|' /etc/dovecot/conf.d/10-mail.conf
+
 maildirmake.dovecot /etc/skel/Maildir
-dpkg-reconfigure postfix
-systemctl restart postfix
-
-sed -i 's/# listen = */listen = */' /etc/dovecot/dovecot.conf
-sed -i 's/# disable_plaintext_auth = yes/disable_plaintext_auth = no/' $DOVECOT_PATH/10-auth.conf
-sed -i 's/# mail_location = maildir:~/Maildir/mail_location = maildir:~/Maildir/' $DOVECOT_PATH/10-mail.conf
-sed -i 's|mail_location = mbox:~/mail:INBOX=/var/mail/%u|# mail_location = mbox:~/mail:INBOX=/var/mail/%u|' $DOVECOT_PATH/10-mail.conf
-systemctl restart dovecot
+systemctl restart postfix dovecot
 
 # echo "home_mailbox = Maildir/" >>  /etc/postfix/main.cf
 # echo "message_size_limit = 20480000" >> /etc/postfix/main.cf
