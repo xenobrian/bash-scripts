@@ -9,7 +9,7 @@ if (( "$EUID" != 0 )); then
     exit
 fi
 
-echo "------------> UNFINISHED SCRIPT <------------"
+echo "-----------------> UNFINISHED SCRIPT <-----------------"
 echo "Do not execute this script in a deployment-ready server!"
 
 while true; do
@@ -22,7 +22,7 @@ read -rp "(P)roceed          (A)bort : " WARNING
 
       a|A)
       echo "Exiting."
-      break
+      exit 0
       ;;
 
       *)
@@ -54,9 +54,13 @@ for x in net-tools sed wget unzip curl awk; do
     packageChecker "$x" -y
 done
 
-# Apache2 install and configuration
+# Apache2 install and configuration + WordPress download
 echo "Installing necessary packages..."
 apt install apache2 libapache2-mod-php -y ## > /dev/null 2>&1
+
+echo "Downloading WordPress..."
+curl -L https://wordpress.org/latest.zip -o /var/www/html/latest.zip
+
 CONF_PATH=/etc/apache2/sites-available
 
 cp $CONF_PATH/000-default.conf $CONF_PATH/template.conf
@@ -70,10 +74,12 @@ while true; do
         read -rp "What is the name for the vhost config file? [web.conf] : " VHOST_FILENAME
         read -rp "What domain name would you like to point the vhost to? [example.com] : " DOMAIN_NAME
         read -rp "Set up an alias (ServerAlias directive)? Empty for none : " ALIAS_NAME
-        read -rp "Specify the path of this website's directory [/var/www/html] : " ROOT_WEBDIR
+        read -rp "Specify the root directory of the website [/var/www/html] : " ROOT_WEBDIR
+        read -rp "Should WordPress be installed on $ROOT_WEBDIR now? [y/N] : " WP_INSTALL
 
         VHOST_FILENAME=${VHOST_FILENAME:-web.conf}
         DOMAIN_NAME=${DOMAIN_NAME:-example.com}
+
         if [[ -z $ROOT_WEBDIR ]]; then
             ROOT_WEBDIR="/var/www/html"
         fi
@@ -94,6 +100,29 @@ while true; do
             cat $TMPFILE | tee $CONF_PATH/$VHOST_FILENAME
             rm $TMPFILE
         fi
+
+        while true; do
+            case "$WP_INSTALL" in
+                y|Y)
+                if [[ $ROOT_WEBDIR =~ ^/var/www/html ]]; then
+                    unzip /var/www/html/latest.zip -d /var/www/html
+                    mv /var/www/html/wordpress /var/www/html/$(echo $ROOT_WEBDIR | awk -F/ '{print $5}')
+                else
+                    unzip /var/www/html/latest.zip -d /var/www/html
+                    mv /var/www/html/wordpress $ROOT_WEBDIR
+                fi
+                break
+                ;;
+
+                n|N)
+                break
+                ;;
+
+                *)
+                echo "Not a valid answer."
+                ;;
+            esac
+        done
 
         echo "Since you are root, the user:group of the $ROOT_WEBDIR is probably root:root."
         while true; do
@@ -158,8 +187,23 @@ function BindScriptConfig() {
         TLD=''
     fi
 
-    if [[ -z $TLD ]] && [ ! -f /etc/bind/$FILE_NAME ]; then
+    if [ ! -f /etc/bind/$FILE_NAME ]; then
+        cp /etc/bind/db.local /etc/bind/$FILE_NAME
+
         read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " TLD
+        read -rp "What is the IP Address of $TLD NS? [192.168.0.3] : " IP
+
+        sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
+        sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
+        sed -i "s/127.0.0.1/$IP/" /etc/bind/$FILE_NAME
+
+        # Delete IPv6 option
+        sed -i "/::1$/d" /etc/bind/$FILE_NAME
+    fi
+
+    if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
+        cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
+        sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
     fi
 
     while true; do
@@ -178,31 +222,6 @@ function BindScriptConfig() {
                     break
                 fi
             done
-        fi
-
-        if [ ! -f /etc/bind/$FILE_NAME ]; then
-            cp /etc/bind/db.local /etc/bind/$FILE_NAME
-
-            sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
-            sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
-            sed -i "/127.0.0.1$/d" /etc/bind/$FILE_NAME
-
-            # Reinsert zone file option that got deleted by previous sed commands
-            sed -i "/::1$/d" /etc/bind/$FILE_NAME
-            echo -e "@\tIN\tA\t$TLD." >> /etc/bind/$FILE_NAME
-        fi
-
-        if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
-            cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
-
-            sed -i "s/localhost/$TLD/" /etc/bind/$PTR_FILE_NAME
-            sed -i "s/.localhost/.$TLD/" /etc/bind/$PTR_FILE_NAME
-
-            sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
-        fi
-
-        if [ -f /etc/bind/$PTR_FILE_NAME ]; then
-            echo -e "$HOST_IP\tIN\tPTR\t$TLD." >> /etc/bind/$PTR_FILE_NAME
         fi
 
         case "$RECORD" in
@@ -308,7 +327,7 @@ while true; do
 done
 
 while true; do
-    read -rp "Create and edit another zone file? : " ZONE_FILE_EDIT_DECISION
+    read -rp "Create and edit another zone file? [y/N] : " ZONE_FILE_EDIT_DECISION
     case "$ZONE_FILE_EDIT_DECISION" in
         y|Y)
         BindScriptConfig
@@ -333,7 +352,7 @@ for pkgs in php php-mysql php-snmp php-xml php-mbstring php-json php-gd php-gmp 
 done
 
 # Database (MariaDB)
-apt install mariadb-server mariadb-client
+apt install mariadb-server mariadb-client -y
 mysql_secure_installation ## Remote login option must be allowed
 
 # Mail Server (Postfix and Dovecot)
@@ -343,13 +362,15 @@ apt install postfix dovecot-imapd dovecot-pop3d -y
 read -rp "Hostname of this mail server [example.net] : " POSTFIX_HOST
 cp /etc/postfix/main.cf /etc/postfix/main.cf.bak
 sed -i "s/^myhostname = .*/myhostname = $(printf '%s' "$POSTFIX_HOST" | sed 's/[&/\]/\\&/g')/" /etc/postfix/main.cf
-sed -i "s/mynetworks: 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128/mynetworks: 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 0.0.0.0/0/" /etc/postfix/main.cf
-sed -i "s/inet_interfaces = loopback-only/inet_interfaces = all/" /etc/postfix/main.cf
-sed -i 's/default_transport = error/default_transport = smtp/' /etc/postfix/main.cf
-sed -i 's/relay_transport = error/relay_transport = smtp/' /etc/postfix/main.cf
+sed -i 's|mynetworks = 127.0.0.0/8 \[::ffff:127.0.0.0\]/104 \[::1\]/128|mynetworks = 127.0.0.0/8 \[::ffff:127.0.0.0\]/104 \[::1\]/128 0.0.0.0/0|' /etc/postfix/main.cf
+sed -i 's/inet_interfaces = loopback-only/inet_interfaces = all/' /etc/postfix/main.cf
+sed -i 's/inet_protocols = all/inet_protocols = ipv4/' /etc/postfix/main.cf
+#sed -i 's/default_transport = error/default_transport = smtp/' /etc/postfix/main.cf
+#sed -i 's/relay_transport = error/relay_transport = smtp/' /etc/postfix/main.cf
 
-echo "inet_protocols = ipv4" >> /etc/postfix/main.cf
-echo "home_mailbox = Maildir" >> /etc/postfix/main.cf
+echo "default_transport = smtp" >> /etc/postfix/main.cf
+echo "relay_transport = smtp" >> /etc/postfix/main.cf
+echo "home_mailbox = Maildir/" >> /etc/postfix/main.cf
 
 sed -i 's/#listen = \*, ::/listen = */' /etc/dovecot/dovecot.conf
 sed -i 's/#disable_plaintext_auth = yes/disable_plaintext_auth = no/' /etc/dovecot/conf.d/10-auth.conf
@@ -363,14 +384,14 @@ systemctl restart postfix dovecot
 # systemctl restart postfix
 
 # Roundcube
-apt install roundcube
+apt install roundcube -y
 
 while true; do
     while true; do
         read -rp "IMAP server domain name [example.com] : " IMAP_HOST
         read -rp "IMAP server port [143] : " IMAP_PORT
         read -rp "SMTP server domain name [example.com] : " SMTP_HOST
-        read -rp "SMTP server port [25] : " IMAP_HOST
+        read -rp "SMTP server port [25] : " SMTP_PORT
 
         IMAP_HOST=${IMAP_HOST:-example.com}
         IMAP_PORT=${IMAP_PORT:-143}
@@ -380,16 +401,17 @@ while true; do
         # Deprecated
         # sed -i "s/$config['smtp_port'] = 587/$config['smtp_port'] = 25/" /etc/roundcube/config.inc.php
 
-        sed -i "s/$config['imap_host'] = [\"localhost:143\"];/$config['imap_host'] = [\"$IMAP_HOST:$IMAP_PORT\";]/" /etc/roundcube/config.inc.php
-        sed -i "s/$config['smtp_host'] = 'localhost:587';/$config['smtp_host'] = \"$SMTP_HOST:$SMTP_PORT\";/" /etc/roundcube/config.inc.php
-        sed -i "s/$config['smtp_user'] = '%u';/$config['smtp_user'] = '';/" /etc/roundcube/config.inc.php
-        sed -i "s/$config['smtp_pass'] = '%p';/$config['smtp_pass'] = '';/" /etc/roundcube/config.inc.php
+        sed -i "s/\$config\['imap_host'\] = \[\"localhost:143\"\];/\$config\['imap_host'\] = \[\"$IMAP_HOST:$IMAP_PORT\"\];/" /etc/roundcube/config.inc.php
+        sed -i "s/\$config\['smtp_host'\] = 'localhost:587';/\$config\['smtp_host'\] = '$SMTP_HOST:$SMTP_PORT';/" /etc/roundcube/config.inc.php
+        sed -i "s/\$config\['smtp_user'\] = '%u';/\$config\['smtp_user'\] = '';/" /etc/roundcube/config.inc.php
+        sed -i "s/\$config\['smtp_pass'\] = '%p';/\$config\['smtp_pass'\] = '';/" /etc/roundcube/config.inc.php
 
         while true; do
             read -rp "Reconfigure Roundcube? This will run 'dpkg-reconfigure roundcube-core' [y/N]: " RECONFIG
             case "$RECONFIG" in
                 y|Y)
                 dpkg-reconfigure roundcube-core
+                break
                 ;;
 
                 n|N)
