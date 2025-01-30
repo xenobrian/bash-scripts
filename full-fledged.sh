@@ -75,7 +75,7 @@ while true; do
         read -rp "What domain name would you like to point the vhost to? [example.com] : " DOMAIN_NAME
         read -rp "Set up an alias (ServerAlias directive)? Empty for none : " ALIAS_NAME
         read -rp "Specify the root directory of the website [/var/www/html] : " ROOT_WEBDIR
-        read -rp "Should WordPress be installed on $ROOT_WEBDIR now? [y/N] : " WP_INSTALL
+        read -rp "Should WordPress be installed on $ROOT_WEBDIR? [y/N] : " WP_INSTALL
 
         VHOST_FILENAME=${VHOST_FILENAME:-web.conf}
         DOMAIN_NAME=${DOMAIN_NAME:-example.com}
@@ -212,8 +212,10 @@ function BindScriptConfig() {
 
         if [[ $RECORD == "A" ]] || [[ $RECORD == "AAAA" ]] || [[ $RECORD == "NS" ]]; then
             while true; do
-                read -rp "To what IP it belongs to? [192.168.0.3] : " IP
-                IP=${IP:-192.168.0.3}
+                if [[ -z $IP ]]; then
+                    IP=${IP:-192.168.0.3}
+                fi
+                read -rp "To what IP it belongs to? [$IP] : " IP
                 HOST_IP=$(echo $IP | awk -F. '{print $4}')
 
                 if [[ ! $IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
