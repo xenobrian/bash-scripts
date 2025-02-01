@@ -231,6 +231,10 @@ function BindScriptConfig() {
             echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP"
             echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP" >> /etc/bind/$FILE_NAME
             echo -e "$HOST_IP\tIN\tPTR\t$SUBDOMAIN.$TLD." >> /etc/bind/$PTR_FILE_NAME
+
+            if [[ $SUBDOMAIN.$TLD =~ ^cacti.*$ ]]; then
+                CACTI_DOMAIN=$SUBDOMAIN.$TLD
+            fi
             ;;
 
             "MX")
@@ -266,6 +270,58 @@ function BindScriptConfig() {
         esac
 
         while true; do
+            read -rp "Configure the local DNS zone in named.conf.local? [y/N] : " LOCAL_DNS_DECISION
+            case "$LOCAL_DNS_DECISION" in
+                y|Y)
+                while true; do
+                    read -rp "Which zone to configure [$TLD] : " ZONE
+                    read -rp "File path (specify full path, e.g /etc/bind/db.local) [$FILE_NAME] : " ZONE_FILEPATH
+
+                    ZONE=${ZONE:-$TLD}
+                    ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
+
+                    echo -e "zone \"$ZONE\" {\n\ttype master;\n\tfile \"$ZONE_FILEPATH\";\n};\n" >> named.conf.local
+                done
+                break
+                ;;
+
+                n|N)
+                break
+                ;;
+
+                *)
+                echo "Not a valid option"
+                ;;
+            esac
+        done
+
+        while true; do
+            read -rp "Configure the reverse DNS lookup (in.addr-arpa) in named.conf.local? [y/N] : " REVERSE_DNS_DECISION
+            case "$REVERSE_DNS_DECISION" in
+                y|Y)
+                while true; do
+                    read -rp "What IP to configure [$(echo $IP | awk -F. 'print $2"."$1')] : " REVERSE_ZONE
+                    read -rp "File path (specify full path, e.g /etc/bind/db.192) [$FILE_NAME] : " REVERSE_ZONE_FILEPATH
+
+                    REVERSE_ZONE=${ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
+                    REVERSE_ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
+
+                    echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"$REVERSE_ZONE_FILEPATH\";\n};\n" >> named.conf.local
+                done
+                break
+                ;;
+
+                n|N)
+                break
+                ;;
+
+                *)
+                echo "Not a valid option"
+                ;;
+            esac
+        done
+
+        while true; do
             read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
             case "$SUBDOMAIN_RECREATE_DECISION" in
                 y|Y)
@@ -282,18 +338,16 @@ function BindScriptConfig() {
             esac
         done
     done
-
-    SET_CONF_STATE="finished"
 }
 
 
 while true; do
     echo "You will need to edit these files :"
     echo -e "- The zone file (db.$FILE_NAME)\n\
-    - PTR records file (db.$PTR_FILE_NAME)\n\
-    - Local DNS server configuration file (named.conf.local)\n\
-    - Bind9 settings (named.conf.options)\n\
-    Choose which tool to use : "
+- PTR records file (db.$PTR_FILE_NAME)\n\
+- Local DNS server configuration file (named.conf.local)\n\
+- Bind9 settings (named.conf.options)\n\n\
+Choose which tool to use : "
     read -rp "(N)ano       (V)im       (S)cript       (A)bort: " EDIT_METHOD
     case "$EDIT_METHOD" in
         n|N)
@@ -428,9 +482,33 @@ while true; do
     done
 done
 
-# Cacti
-for pkgs in rrdtool mariadb-client snmp snmpd; do
+# SNMP and Cacti
+for pkgs in rrdtool mariadb-client snmp snmpd cacti; do
     apt install $pkgs -y
 done
 
-apt install cacti -y
+read -rp "SNMP community profile to create (any string) [snmp1] : " SNMP_COM
+read -rp "IP address to monitor with SNMP [$IP] : " IP
+read -rp "SNMP agent address [$IP] : " AA_IP
+
+SNMP_COM=${SNMP_COM:-snmp1}
+IP=${IP:-IP}
+AA_IP=${AA_IP:-IP}
+
+sed -i "s/^agentaddress.*$/agentaddress $AA_IP,127.0.0.1/" /etc/snmp/snmpd.conf
+
+TMPFILE=$(mktemp /tmp/snmpd-config-XXX.tmp)
+awk "/rocommunity  public/ { print; print \"rocommunity  $SNMP_COM $IP\"; next }1" /etc/snmp/snmpd.conf > $TMPFILE
+cat $TMPFILE | tee /etc/snmp/snmpd.conf
+rm $TMPFILE
+
+TMPFILE=$(mktemp /tmp/cacti-config-XXX.tmp)
+sed -e '1,2d;10,20d' -e '3,22s/^/\t/' -e '3i<VirtualHost \*:80>' -e "3iServerName $CACTI_DOMAIN" -e '3iDocumentRoot /usr/share/cacti/site' -e '23i<VirtualHost>' /etc/apache2/conf-available/cacti.conf > $TMPFILE
+cat $TMPFILE | sed -e '2,3s/^/\t/' > /etc/apache2/sites-available/cacti.conf
+rm $TMPFILE
+
+chmod 755 /usr/share/cacti/site/poller.php
+(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/share/cacti/site/poller.php -with args") | crontab -
+
+a2ensite cacti.conf
+systemctl restart cron snmpd
