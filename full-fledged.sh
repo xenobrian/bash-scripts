@@ -86,13 +86,7 @@ while true; do
 
         cp $CONF_PATH/template.conf $CONF_PATH/$VHOST_FILENAME
         sed -i "s/#ServerName www.example.com/ServerName $DOMAIN_NAME/" $CONF_PATH/$VHOST_FILENAME
-
-        if [[ -d $ROOT_WEBDIR ]]; then
-            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $CONF_PATH/$VHOST_FILENAME
-        else
-            mkdir -p $ROOT_WEBDIR
-            sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $CONF_PATH/$VHOST_FILENAME
-        fi
+        sed -i "s|DocumentRoot /var/www/html|DocumentRoot $ROOT_WEBDIR|" $CONF_PATH/$VHOST_FILENAME
 
         if [[ -n $ALIAS_NAME ]]; then
             TMPFILE=$(mktemp /tmp/apache2-config-XXX.tmp)
@@ -104,13 +98,12 @@ while true; do
         while true; do
             case "$WP_INSTALL" in
                 y|Y)
-                if [[ $ROOT_WEBDIR =~ ^/var/www/html ]]; then
-                    unzip /var/www/html/latest.zip -d /var/www/html
-                    mv /var/www/html/wordpress /var/www/html/$(echo $ROOT_WEBDIR | awk -F/ '{print $5}')
-                else
-                    unzip /var/www/html/latest.zip -d /var/www/html
-                    mv /var/www/html/wordpress $ROOT_WEBDIR
-                fi
+                TMPDIR=$(echo "$ROOT_WEBDIR" | sed -E 's#(/[^/]+)$##')
+
+                mkdir -p $TMPDIR
+                rm -rf $ROOT_WEBDIR
+                unzip /var/www/html/latest.zip -d /var/www/html
+                mv /var/www/html/wordpress $ROOT_WEBDIR
                 break
                 ;;
 
