@@ -281,8 +281,8 @@ function BindScriptConfig() {
                     ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
 
                     echo -e "zone \"$ZONE\" {\n\ttype master;\n\tfile \"$ZONE_FILEPATH\";\n};\n" >> named.conf.local
+                    break
                 done
-                break
                 ;;
 
                 n|N)
@@ -300,7 +300,7 @@ function BindScriptConfig() {
             case "$REVERSE_DNS_DECISION" in
                 y|Y)
                 while true; do
-                    read -rp "What IP to configure [$(echo $IP | awk -F. 'print $2"."$1')] : " REVERSE_ZONE
+                    read -rp "What IP to configure [$(echo $IP | awk -F. '{print $2"."$1'})] : " REVERSE_ZONE
                     read -rp "File path (specify full path, e.g /etc/bind/db.192) [$FILE_NAME] : " REVERSE_ZONE_FILEPATH
 
                     REVERSE_ZONE=${ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
