@@ -180,163 +180,204 @@ apt install bind9 bind9utils dnsutils -y ##> /dev/null 2>&1
 echo "We will configure Bind9 now..."; sleep 2
 
 function BindScriptConfig() {
-    read -rp "Input the name for forward zone file : " FILE_NAME
-    read -rp "Input the name for reverse zone file : " PTR_FILE_NAME
-
-    if [ ! -f /etc/bind/$FILE_NAME ]; then
-        TLD=''
-    fi
-
-    if [ ! -f /etc/bind/$FILE_NAME ]; then
-        cp /etc/bind/db.local /etc/bind/$FILE_NAME
-
-        read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " TLD
-        read -rp "What is the IP Address of $TLD NS? [192.168.0.3] : " IP
-
-        sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
-        sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
-        sed -i "s/127.0.0.1/$IP/" /etc/bind/$FILE_NAME
-
-        # Delete IPv6 option
-        sed -i "/::1$/d" /etc/bind/$FILE_NAME
-    fi
-
-    if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
-        cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
-        sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
-    fi
-
     while true; do
-        read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
-        read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
+        read -rp "Input the name for forward zone file : " FILE_NAME
+        read -rp "Input the name for reverse zone file : " PTR_FILE_NAME
 
-        if [[ $RECORD == "A" ]] || [[ $RECORD == "AAAA" ]] || [[ $RECORD == "NS" ]]; then
-            while true; do
-                if [[ -z $IP ]]; then
-                    IP=${IP:-192.168.0.3}
-                fi
-                read -rp "To what IP it belongs to? [$IP] : " IP
-                HOST_IP=$(echo $IP | awk -F. '{print $4}')
-
-                if [[ ! $IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-                    echo "Invalid IP address format. Please try again."
-                else
-                    break
-                fi
-            done
+        if [ ! -f /etc/bind/$FILE_NAME ]; then
+            TLD=''
         fi
 
-        case "$RECORD" in
-            "A"|"AAAA"|"NS")
-            echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP"
-            echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP" >> /etc/bind/$FILE_NAME
-            echo -e "$HOST_IP\tIN\tPTR\t$SUBDOMAIN.$TLD." >> /etc/bind/$PTR_FILE_NAME
+        if [ ! -f /etc/bind/$FILE_NAME ]; then
+            cp /etc/bind/db.local /etc/bind/$FILE_NAME
 
-            if [[ $SUBDOMAIN.$TLD =~ ^cacti.*$ ]]; then
-                CACTI_DOMAIN=$SUBDOMAIN.$TLD
+            read -rp "What is the top-level domain (TLD) that will be used? [example.net] : " TLD
+            read -rp "What is the IP Address of $TLD NS? [192.168.0.3] : " IP
+
+            sed -i "s/localhost/$TLD/" /etc/bind/$FILE_NAME
+            sed -i "s/.localhost/.$TLD/" /etc/bind/$FILE_NAME
+            sed -i "s/127.0.0.1/$IP/" /etc/bind/$FILE_NAME
+
+            # Delete IPv6 option
+            sed -i "/::1$/d" /etc/bind/$FILE_NAME
+        fi
+
+        if [ ! -f /etc/bind/$PTR_FILE_NAME ]; then
+            cp /etc/bind/db.127 /etc/bind/$PTR_FILE_NAME
+            sed -i "/^1.0.0/d" /etc/bind/$PTR_FILE_NAME
+        fi
+
+        while true; do
+            read -rp "What subdomain would you like to create? [ns1/www/ftp/mail/other] : " SUBDOMAIN
+            read -rp "What kind of record is it? [A/AAAA/CNAME/MX/NS/SRV/TXT] : " RECORD
+
+            if [[ $RECORD == "A" ]] || [[ $RECORD == "AAAA" ]] || [[ $RECORD == "NS" ]]; then
+                while true; do
+                    if [[ -z $IP ]]; then
+                        IP=${IP:-192.168.0.3}
+                    fi
+                    read -rp "To what IP it belongs to? [$IP] : " IP
+                    HOST_IP=$(echo $IP | awk -F. '{print $4}')
+
+                    if [[ ! $IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                        echo "Invalid IP address format. Please try again."
+                    else
+                        break
+                    fi
+                done
             fi
-            ;;
 
-            "MX")
-            read -rp "What is the priority? [0-65535] : " PRIORITY
-            echo -e "$TLD.\tIN\tMX\t$PRIORITY\t$SUBDOMAIN.$TLD."
-            echo -e "$TLD.\tIN\tMX\t$PRIORITY\t$SUBDOMAIN.$TLD." >> /etc/bind/$FILE_NAME
-            ;;
+            case "$RECORD" in
+                "A"|"AAAA"|"NS")
+                echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP"
+                echo -e "$SUBDOMAIN\tIN\t$RECORD\t$IP" >> /etc/bind/$FILE_NAME
+                echo -e "$HOST_IP\tIN\tPTR\t$SUBDOMAIN.$TLD." >> /etc/bind/$PTR_FILE_NAME
 
-            "SRV")
-            read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " service
-            read -rp "Which protocol does this service use? (tcp/udp)[udp] : " protocol
-            read -rp "What is the TTL for this record in seconds? [3600] : " ttl
-            read -rp "What is the priority? [1] : " priority
-            read -rp "What is the weight? [1] : " weight
-            read -rp "What is the port? [5060] : " port
-
-            service=${service:-sip}
-            protocol=${protocol:-udp}
-            ttl=${ttl:-3600}
-            priority=${priority:-1}
-            weight=${weight:-1}
-            port=${port:-5060}
-
-            echo -e "_$service._$protocol.$TLD.\t$ttl\tIN\tSRV\t$priority $weight $port\t$SUBDOMAIN.$TLD."
-            echo -e "_$service._$protocol.$TLD.\t$ttl\tIN\tSRV\t$priority $weight $port\t$SUBDOMAIN.$TLD." >> /etc/bind/$FILE_NAME
-            ;;
-
-            "CNAME")
-            read -rp "What domain should this CNAME record points to : " target
-            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target."
-            echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target." >> /etc/bind/$FILE_NAME
-            ;;
-        esac
-
-        while true; do
-            read -rp "Configure the local DNS zone in named.conf.local? [y/N] : " LOCAL_DNS_DECISION
-            case "$LOCAL_DNS_DECISION" in
-                y|Y)
-                while true; do
-                    read -rp "Which zone to configure [$TLD] : " ZONE
-                    read -rp "File path (specify full path, e.g /etc/bind/db.local) [$FILE_NAME] : " ZONE_FILEPATH
-
-                    ZONE=${ZONE:-$TLD}
-                    ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
-
-                    echo -e "zone \"$ZONE\" {\n\ttype master;\n\tfile \"$ZONE_FILEPATH\";\n};\n" >> named.conf.local
-                    break
-                done
+                if [[ $SUBDOMAIN.$TLD =~ ^cacti.*$ ]]; then
+                    CACTI_DOMAIN=$SUBDOMAIN.$TLD
+                fi
                 ;;
 
-                n|N)
-                break
+                "MX")
+                read -rp "What is the priority? [0-65535] : " PRIORITY
+                echo -e "$TLD.\tIN\tMX\t$PRIORITY\t$SUBDOMAIN.$TLD."
+                echo -e "$TLD.\tIN\tMX\t$PRIORITY\t$SUBDOMAIN.$TLD." >> /etc/bind/$FILE_NAME
                 ;;
 
-                *)
-                echo "Not a valid option"
+                "SRV")
+                read -rp "What service is this intended for? (sip/xmpp/ldap)[sip] : " service
+                read -rp "Which protocol does this service use? (tcp/udp)[udp] : " protocol
+                read -rp "What is the TTL for this record in seconds? [3600] : " ttl
+                read -rp "What is the priority? [1] : " priority
+                read -rp "What is the weight? [1] : " weight
+                read -rp "What is the port? [5060] : " port
+
+                service=${service:-sip}
+                protocol=${protocol:-udp}
+                ttl=${ttl:-3600}
+                priority=${priority:-1}
+                weight=${weight:-1}
+                port=${port:-5060}
+
+                echo -e "_$service._$protocol.$TLD.\t$ttl\tIN\tSRV\t$priority $weight $port\t$SUBDOMAIN.$TLD."
+                echo -e "_$service._$protocol.$TLD.\t$ttl\tIN\tSRV\t$priority $weight $port\t$SUBDOMAIN.$TLD." >> /etc/bind/$FILE_NAME
+                ;;
+
+                "CNAME")
+                read -rp "What domain should this CNAME record points to : " target
+                echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target."
+                echo -e "$SUBDOMAIN.$TLD\tIN\tCNAME\t$target." >> /etc/bind/$FILE_NAME
                 ;;
             esac
+
+            while true; do
+                read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
+                case "$SUBDOMAIN_RECREATE_DECISION" in
+                    y|Y)
+                    break
+                    ;;
+
+                    n|N)
+                    break 2
+                    ;;
+
+                    *)
+                    echo "Not valid."
+                    ;;
+                esac
+            done
         done
 
         while true; do
-            read -rp "Configure the reverse DNS lookup (in.addr-arpa) in named.conf.local? [y/N] : " REVERSE_DNS_DECISION
-            case "$REVERSE_DNS_DECISION" in
-                y|Y)
-                while true; do
-                    read -rp "What IP to configure [$(echo $IP | awk -F. '{print $2"."$1'})] : " REVERSE_ZONE
-                    read -rp "File path (specify full path, e.g /etc/bind/db.192) [$REVERSE_FILE_NAME] : " REVERSE_ZONE_FILEPATH
-
-                    REVERSE_ZONE=${ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
-                    REVERSE_ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
-
-                    echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"$REVERSE_ZONE_FILEPATH\";\n};\n" >> named.conf.local
-                    break
-                done
-                ;;
-
-                n|N)
-                break
-                ;;
-
-                *)
-                echo "Not a valid option"
-                ;;
-            esac
-        done
-
-        while true; do
-            read -rp "Create another subdomain? [y/N] : " SUBDOMAIN_RECREATE_DECISION
-            case "$SUBDOMAIN_RECREATE_DECISION" in
+            read -rp "Create and edit another zone files? [y/N] : " ZONE_FILE_EDIT_DECISION
+            case "$ZONE_FILE_EDIT_DECISION" in
                 y|Y)
                 break
                 ;;
 
                 n|N)
+                echo "Finished doing zone file configuration, now exiting"
                 break 2
                 ;;
 
                 *)
-                echo "Not valid."
+                echo "Not valid"
                 ;;
             esac
         done
+    done
+
+
+    while true; do
+        read -rp "Configure the local DNS zone in named.conf.local? [y/N] : " LOCAL_DNS_DECISION
+        case "$LOCAL_DNS_DECISION" in
+            y|Y)
+            while true; do
+                read -rp "Which zone to configure [$TLD] : " ZONE
+                read -rp "File path (specify full path, e.g /etc/bind/db.local) [$FILE_NAME] : " ZONE_FILEPATH
+
+                ZONE=${ZONE:-$TLD}
+                ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
+
+                echo -e "zone \"$ZONE\" {\n\ttype master;\n\tfile \"$ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
+
+                while true; do
+                    read -rp "Reconfigure another zone? [y/N] : " RECONFIG
+                    case "$RECONFIG" in
+                        y|Y)
+                        break
+                        ;;
+
+                        n|N)
+                        echo "Finished configuring local zone file"
+                        break 3
+                        ;;
+
+                        *)
+                        echo "Not a valid answer"
+                        ;;
+                    esac
+                done
+                break
+            done
+            ;;
+
+            n|N)
+            break
+            ;;
+
+            *)
+            echo "Not a valid option"
+            ;;
+        esac
+    done
+
+    while true; do
+        read -rp "Configure the reverse DNS lookup (in.addr-arpa) in named.conf.local? [y/N] : " REVERSE_DNS_DECISION
+        case "$REVERSE_DNS_DECISION" in
+            y|Y)
+            while true; do
+                read -rp "What IP to configure [$(echo $IP | awk -F. '{print $2"."$1'})] : " REVERSE_ZONE
+                read -rp "File path (specify full path, e.g /etc/bind/db.192) [$PTR_FILE_NAME] : " REVERSE_ZONE_FILEPATH
+
+                REVERSE_ZONE=${ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
+                REVERSE_ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
+
+                echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"$REVERSE_ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
+                cat /etc/bind/named.conf.local
+                echo "Finished reverse zone file configuration"
+                break 2
+            done
+            ;;
+
+            n|N)
+            break
+            ;;
+
+            *)
+            echo "Not a valid option"
+            ;;
+        esac
     done
 }
 
@@ -379,24 +420,6 @@ Choose which tool to use : "
 
         *)
         echo "Not a valid answer."
-    esac
-done
-
-while true; do
-    read -rp "Create and edit another zone file? [y/N] : " ZONE_FILE_EDIT_DECISION
-    case "$ZONE_FILE_EDIT_DECISION" in
-        y|Y)
-        BindScriptConfig
-        ;;
-
-        n|N)
-        echo "Finished this zone file configuration, now exiting"
-        break
-        ;;
-
-        *)
-        echo "Not valid"
-        ;;
     esac
 done
 
