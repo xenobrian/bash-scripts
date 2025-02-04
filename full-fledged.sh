@@ -292,10 +292,10 @@ function BindScriptConfig() {
             y|Y)
             while true; do
                 read -rp "Which zone to configure [$TLD] : " ZONE
-                read -rp "File path (specify full path, e.g /etc/bind/db.local) [$FILE_NAME] : " ZONE_FILEPATH
+                read -rp "Forward DNS lookup file name in (specify full path) [/etc/bind/$FILE_NAME] : " ZONE_FILEPATH
 
                 ZONE=${ZONE:-$TLD}
-                ZONE_FILEPATH=${ZONE_FILEPATH:-$FILE_NAME}
+                ZONE_FILEPATH=${ZONE_FILEPATH:-\/etc\/bind\/$FILE_NAME}
 
                 echo -e "zone \"$ZONE\" {\n\ttype master;\n\tfile \"$ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
 
@@ -335,13 +335,13 @@ function BindScriptConfig() {
         case "$REVERSE_DNS_DECISION" in
             y|Y)
             while true; do
-                read -rp "What IP to configure [$(echo $IP | awk -F. '{print $2"."$1'})] : " REVERSE_ZONE
-                read -rp "Reverse DNS lookup file name in /etc/bind [$PTR_FILE_NAME] : " REVERSE_ZONE_FILEPATH
+                read -rp "What in-addr.arpa IP to configure [$(echo $IP | awk -F. '{print $2"."$1'})] : " REVERSE_ZONE
+                read -rp "Reverse DNS lookup file name in (specify full path) [/etc/bind/$PTR_FILE_NAME] : " REVERSE_ZONE_FILEPATH
 
                 REVERSE_ZONE=${REVERSE_ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
-                REVERSE_ZONE_FILEPATH=${REVERSE_ZONE_FILEPATH:-$FILE_NAME}
+                REVERSE_ZONE_FILEPATH=${REVERSE_ZONE_FILEPATH:-\/etc\bind\/$PTR_FILE_NAME}
 
-                echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"/etc/bind/$REVERSE_ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
+                echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"$REVERSE_ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
                 cat /etc/bind/named.conf.local
                 echo "Finished reverse zone file configuration"
                 break 2
