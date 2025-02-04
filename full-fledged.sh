@@ -336,12 +336,12 @@ function BindScriptConfig() {
             y|Y)
             while true; do
                 read -rp "What IP to configure [$(echo $IP | awk -F. '{print $2"."$1'})] : " REVERSE_ZONE
-                read -rp "File path (specify full path, e.g /etc/bind/db.192) [$PTR_FILE_NAME] : " REVERSE_ZONE_FILEPATH
+                read -rp "Reverse DNS lookup file name in /etc/bind [$PTR_FILE_NAME] : " REVERSE_ZONE_FILEPATH
 
                 REVERSE_ZONE=${REVERSE_ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
                 REVERSE_ZONE_FILEPATH=${REVERSE_ZONE_FILEPATH:-$FILE_NAME}
 
-                echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"$REVERSE_ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
+                echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"/etc/bind/$REVERSE_ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
                 cat /etc/bind/named.conf.local
                 echo "Finished reverse zone file configuration"
                 break 2
