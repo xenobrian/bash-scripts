@@ -506,7 +506,7 @@ cat $TMPFILE | tee /etc/snmp/snmpd.conf
 rm $TMPFILE
 
 TMPFILE=$(mktemp /tmp/cacti-config-XXX.tmp)
-sed -e '1,2d;10,20d' -e '3,22s/^/\t/' -e '3i<VirtualHost \*:80>' -e "3iServerName $CACTI_DOMAIN" -e '3iDocumentRoot /usr/share/cacti/site' -e '23i<\VirtualHost>' /etc/apache2/conf-available/cacti.conf > $TMPFILE
+sed -e '1,2d;10,20d' -e '3,22s/^/\t/' -e '3i<VirtualHost \*:80>' -e "3iServerName $CACTI_DOMAIN" -e '3iDocumentRoot /usr/share/cacti/site' -e '23i<\\VirtualHost>' /etc/apache2/conf-available/cacti.conf > $TMPFILE
 cat $TMPFILE | sed -e '2,3s/^/\t/' > /etc/apache2/sites-available/cacti.conf
 rm $TMPFILE
 
