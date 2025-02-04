@@ -117,22 +117,7 @@ while true; do
             esac
         done
 
-        echo "Since you are root, the user:group of the $ROOT_WEBDIR is probably root:root."
-        while true; do
-            read -rp "Change user:group ownership of $ROOT_WEBDIR? [y/N] : " OWNER_CHANGE_DECISION
-            case "$OWNER_CHANGE_DECISION" in
-                y|Y)
-                read -rp "Chown to [user:group] : " CHOWN
-                chown -R $CHOWN $ROOT_WEBDIR
-                break;;
-
-                n|N)
-                break;;
-
-                *)
-                echo "Not a valid answer."
-            esac
-        done
+        chown -R www-data:www-data $ROOT_WEBDIR
 
         while true; do
             read -rp "Enable the website now? [y/N] : " ENABLE_WEB_DECISION
