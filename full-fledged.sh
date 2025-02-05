@@ -339,7 +339,7 @@ function BindScriptConfig() {
                 read -rp "Reverse DNS lookup file name in (specify full path) [/etc/bind/$PTR_FILE_NAME] : " REVERSE_ZONE_FILEPATH
 
                 REVERSE_ZONE=${REVERSE_ZONE:-$(echo $IP | awk -F. 'print $2"."$1')}
-                REVERSE_ZONE_FILEPATH=${REVERSE_ZONE_FILEPATH:-\/etc\bind\/$PTR_FILE_NAME}
+                REVERSE_ZONE_FILEPATH=${REVERSE_ZONE_FILEPATH:-\/etc\/bind\/$PTR_FILE_NAME}
 
                 echo -e "zone \"$REVERSE_ZONE.in-addr.arpa\" {\n\ttype master;\n\tfile \"$REVERSE_ZONE_FILEPATH\";\n};\n" >> /etc/bind/named.conf.local
                 cat /etc/bind/named.conf.local
